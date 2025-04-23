@@ -183,6 +183,49 @@ end
 
 disp('Attitude matrix T (Thorax) aangemaakt.');
 
+%% Lokale assenstelsel Pelvic (P) – volgens ISB
+
+amount_frames = height(filtered_data);
+P = zeros(amount_frames, 3, 3);  % 3x3 matrix per frame, we maken dus 558 3x3 matrixen
+
+% Coördinaten ophalen
+SIASL = [filtered_data.SIASLX, filtered_data.SIASLY, filtered_data.SIASLZ];
+SIASR = [filtered_data.SIASRX, filtered_data.SIASRY, filtered_data.SIASRZ];
+SIPSL = [filtered_data.SIPSLX, filtered_data.SIPSLY, filtered_data.SIPSLZ];
+SIPSR = [filtered_data.SIPSRX, filtered_data.SIPSRY, filtered_data.SIPSRZ]; 
+
+
+% Doorloop eerst alle frames
+for i = 1:amount_frames
+    
+    midpoint_lower_T = 0.5 * (PX(i,:) + T7(i,:));
+    midpoint_higher_T = 0.5 * (MS(i,:) + C7(i,:));
+
+    % Z-as: tussen SIASR en SIASR, naar rechts gericht
+    Y = normalize(SIASR(i,:) - SIASL(i,:)); 
+
+    % Z-as: loodrecht op vlak gevormd door MS, C7 en midpoint_lower_T naar
+    % rechts gericht
+    v1 = C7(i,:) - MS(i,:);
+    v2 = midpoint_lower_T - MS(i,:);
+    Z = normalize(cross(v1,v2));  % kruisproduct van de 2 vlakken
+    
+    % X-as: orthogonaal (kruisproduct) = voorwaartse rotatieas
+    X = cross(Y, Z);
+
+    % Her-orthogonaliseren voor zekerheid (optioneel)
+    Y = cross(Z, X);  % herbereken X zodat alle 3 orthogonaal zijn
+
+    % Van de vectoren eenheidsvectoren maken
+    X = Unity(X);
+    Z = Unity(Z);
+    Y = Unity(Y);
+
+    % Attitude matrix (kolommen zijn assen)
+    T(i, :, :) = [X; Y; Z]';
+end
+
+disp('Attitude matrix P (Pelvis) aangemaakt.');
 %% Visualisatie van lokale assenstelsel Upper Arm Right (U)
 
 figure;
