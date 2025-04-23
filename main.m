@@ -426,3 +426,76 @@ ShoulderAngles = table(gamma, beta, alpha,'VariableNames', {'PlaneOfElevation_de
 % Toon eerste paar waarden
 disp('Eerste 10 rijen van de schouderhoeken (Euler/Cardan):');
 disp(ShoulderAngles(1:100,:));
+
+
+
+
+% ======================================
+% 3D KINEMATICA – PERSOON 3 TEMPLATE
+% Snelheden, Versnellingen & CRP
+% ======================================
+
+%% 1. Inlezen van Hoekdata (van Persoon 2)
+% - Voeg hier code toe om de hoekdata in te lezen
+% - Denk aan struct of matrixvorm, per gewricht
+
+% voorbeeldstructuur:
+% angles_shoulder = ...;
+% angles_elbow = ...;
+% angles_core = ...;
+
+%% 2. Rotatiesnelheden Berekenen
+% - Bereken eerste afgeleide van de hoeken
+% - Voeg filtering toe indien nodig
+
+% Voor snelheid:
+vel_shoulder = diff(angles_shoulder) * fs;  % fs = sampling frequentie (300 Hz)
+vel_elbow = diff(angles_elbow) * fs;
+vel_core = diff(angles_core) * fs;
+
+
+%% 3. Rotatieversnellingen Berekenen
+% - Bereken tweede afgeleide van de hoeken
+
+% Voor versnelling:
+acc_shoulder = diff(vel_shoulder) * fs;
+acc_elbow = diff(vel_elbow) * fs;
+acc_core = diff(vel_core) * fs;
+
+
+%% 4. CRP Methode 1: Hoek-Snelheid Methode
+% Normaliseren van hoeken en snelheden:
+% manier 1: (+-1)
+shoulder_norm = (angles_shoulder - min(angles_shoulder)) / (max(angles_shoulder) - min(angles_shoulder)) * 2 - 1;
+elbow_norm = (angles_elbow - min(angles_elbow)) / (max(angles_elbow) - min(angles_elbow)) * 2 - 1;
+vel_shoulder_norm = (vel_shoulder - min(vel_shoulder)) / (max(vel_shoulder) - min(vel_shoulder)) * 2 - 1;
+vel_elbow_norm = (vel_elbow - min(vel_elbow)) / (max(vel_elbow) - min(vel_elbow)) * 2 - 1;
+
+% manier 2: z-score
+shoulder_norm = (angles_shoulder - mean(angles_shoulder)) / std(angles_shoulder);
+elbow_norm = (angles_elbow - mean(angles_elbow)) / std(angles_elbow);
+vel_shoulder_norm = (vel_shoulder - mean(vel_shoulder)) / std(vel_shoulder);
+vel_elbow_norm = (vel_elbow - mean(vel_elbow)) / std(vel_elbow);
+
+% - Bereken fasehoeken en CRP
+phase_angle_shoulder = atan2(vel_shoulder_norm, shoulder_norm);  % in radialen
+phase_angle_elbow = atan2(vel_elbow_norm, elbow_norm);  % in radialen
+
+crp1 = crp_angle_velocity(angle1, angle2, vel1, vel2);
+
+%% 5. CRP Methode 2: Hilbert Methode
+% - Gebruik Hilbert transform om fasen te verkrijgen
+% - Bereken CRP op basis van deze fasen
+
+% crp2_shoulder = ...;
+
+%% 6. Vergelijking CRP-methodes
+% - Plot of analyse van verschillen tussen beide methodes
+
+% figuren of statistieken ...
+
+%% 7. Export / Output
+% - Struct klaarzetten voor Persoon 4
+% - Opslaan van CRP-resultaten en afgeleiden
+
+% save('output_persoon3.mat', ...)
