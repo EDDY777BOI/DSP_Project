@@ -193,36 +193,31 @@ SIASL = [filtered_data.SIASLX, filtered_data.SIASLY, filtered_data.SIASLZ];
 SIASR = [filtered_data.SIASRX, filtered_data.SIASRY, filtered_data.SIASRZ];
 SIPSL = [filtered_data.SIPSLX, filtered_data.SIPSLY, filtered_data.SIPSLZ];
 SIPSR = [filtered_data.SIPSRX, filtered_data.SIPSRY, filtered_data.SIPSRZ]; 
-
+HL    = [filtered_data.HLX, filtered_data.HLY, filtered_data.HLZ];
 
 % Doorloop eerst alle frames
 for i = 1:amount_frames
-    
-    midpoint_lower_T = 0.5 * (PX(i,:) + T7(i,:));
-    midpoint_higher_T = 0.5 * (MS(i,:) + C7(i,:));
+    midpoint_SIPS = 0.5 * (SIPSR(i,:) + SIPSL(i,:));
 
     % Z-as: tussen SIASR en SIASR, naar rechts gericht
-    Y = normalize(SIASR(i,:) - SIASL(i,:)); 
+    Z = normalize(SIASR(i,:) - SIASL(i,:)); 
 
-    % Z-as: loodrecht op vlak gevormd door MS, C7 en midpoint_lower_T naar
-    % rechts gericht
-    v1 = C7(i,:) - MS(i,:);
-    v2 = midpoint_lower_T - MS(i,:);
-    Z = normalize(cross(v1,v2));  % kruisproduct van de 2 vlakken
-    
-    % X-as: orthogonaal (kruisproduct) = voorwaartse rotatieas
-    X = cross(Y, Z);
+    % X-as: orthogonaal op Z en parallel met lijn in het vlak gevormd door SIASR en SIASL en
+    % midpoint_SIPS
+    plane = cross(midpoint_SIPS - SIASL(i,:), SIASR(i,:) - SIASL(i,:));
+    X = cross(Z, plane);
 
+    % Y-as: loodracht op X en Z, naar boven gericht
+    Y = cross(X, Z); 
     % Her-orthogonaliseren voor zekerheid (optioneel)
-    Y = cross(Z, X);  % herbereken X zodat alle 3 orthogonaal zijn
-
+   
     % Van de vectoren eenheidsvectoren maken
     X = Unity(X);
     Z = Unity(Z);
     Y = Unity(Y);
 
     % Attitude matrix (kolommen zijn assen)
-    T(i, :, :) = [X; Y; Z]';
+    P(i, :, :) = [X; Y; Z]';
 end
 
 disp('Attitude matrix P (Pelvis) aangemaakt.');
@@ -332,6 +327,38 @@ for i = 1:step:height(filtered_data)
     quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
 end
 
+%% %% Visualisatie van lokale assenstelsel Pelvis (P)
+
+figure;
+hold on;
+axis equal;
+xlabel('X (mm)'); ylabel('Y (mm)'); zlabel('Z (mm)');
+grid on;
+title('Lokale assenstelsels Pelvis (P) over tijd');
+view(3);
+
+% Om de 10 frames visualizeren we
+step = 10;
+scale = 100;  % lengte van de assen
+
+for i = 1:step:height(filtered_data)
+    origin = HL(i, :);  % Hip Left
+
+    % Extract attitude matrix T op frame i
+    R = squeeze(P(i, :, :));
+
+    % Assen (kolommen)
+    X = R(:, 1);
+    Y = R(:, 2);
+    Z = R(:, 3);
+
+    % Plot assen met quiver3
+    quiver3(origin(1), origin(2), origin(3), scale*X(1), scale*X(2), scale*X(3), 'r', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
+end
+legend('X-as (voor)', 'Y-as (boven)', 'Z-as (rechts)');
+
 %% Gecombineerde visualisatie van de segmenten
 
 figure;
@@ -386,18 +413,35 @@ for i = 1:amount_frames
     RU = squeeze(U(i,:,:)); % 3x3 upper arm
     RT = squeeze(T(i,:,:)); % 3x3 thorax
     RF = squeeze(F(i,:,:)); % 3x3 forearm
+    RP = squeeze(P(i,:,:)); % 3x3 pelvic
     
-    % Relatieve matrix: upper arm in thorax‑coördinaten
+    % Relatieve matrix: Upper arm relative to Thorax
     R_rel_UT = RT.' * RU; 
     R_UT(i,:,:) = R_rel_UT;
 
-    % Relatieve matrix: forarm in upper arm coördinaten
+    % Relatieve matrix: Forarm relative to Upper arm
     R_rel_FU = RU.' * RF;
 
-   
+    % Relatieve matrix: Thorax relative to Pelvic
+    R_rel_TP = RP.' * RT;
+
     % Euler-hoeken voor Shoulder motion based on R_rel_UT (ISB: Y-X-Y volgorde)
     euler_rad = rotm2eul(R_rel_UT, 'YXY');  % [gamma beta alpha] in radialen
     euler_shoulder_rad(i,:) = euler_rad;
+
+    % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: ... volgorde)
+
+    % Euler-hoeken voor Core motion based on R_rel_TP (ISB: ... volgorde)
+
+    % Euler-hoeken voor Pelvis motion within global frame based on
+    % att_mat_P (ISB: ... volgorde)
+
+    % Euler-hoeken voor Thorax motion within global frame based on
+    % att_mat_T (ISB: ... volgorde)
+
+    % Euler-hoeken voor Left Knee motion based on R_rel_STL (ISB: ... volgorde)
+
+    
 end
     % Check of de rotatiematrices orthonormaal zijn, dit is vereist voor de
     % rotm2eul functie
@@ -429,73 +473,73 @@ disp(ShoulderAngles(1:100,:));
 
 
 
-
+%%
 % ======================================
 % 3D KINEMATICA – PERSOON 3 TEMPLATE
 % Snelheden, Versnellingen & CRP
 % ======================================
 
-%% 1. Inlezen van Hoekdata (van Persoon 2)
-% - Voeg hier code toe om de hoekdata in te lezen
-% - Denk aan struct of matrixvorm, per gewricht
-
-% voorbeeldstructuur:
-% angles_shoulder = ...;
-% angles_elbow = ...;
-% angles_core = ...;
-
-%% 2. Rotatiesnelheden Berekenen
-% - Bereken eerste afgeleide van de hoeken
-% - Voeg filtering toe indien nodig
-
-% Voor snelheid:
-vel_shoulder = diff(angles_shoulder) * fs;  % fs = sampling frequentie (300 Hz)
-vel_elbow = diff(angles_elbow) * fs;
-vel_core = diff(angles_core) * fs;
-
-
-%% 3. Rotatieversnellingen Berekenen
-% - Bereken tweede afgeleide van de hoeken
-
-% Voor versnelling:
-acc_shoulder = diff(vel_shoulder) * fs;
-acc_elbow = diff(vel_elbow) * fs;
-acc_core = diff(vel_core) * fs;
-
-
-%% 4. CRP Methode 1: Hoek-Snelheid Methode
-% Normaliseren van hoeken en snelheden:
-% manier 1: (+-1)
-shoulder_norm = (angles_shoulder - min(angles_shoulder)) / (max(angles_shoulder) - min(angles_shoulder)) * 2 - 1;
-elbow_norm = (angles_elbow - min(angles_elbow)) / (max(angles_elbow) - min(angles_elbow)) * 2 - 1;
-vel_shoulder_norm = (vel_shoulder - min(vel_shoulder)) / (max(vel_shoulder) - min(vel_shoulder)) * 2 - 1;
-vel_elbow_norm = (vel_elbow - min(vel_elbow)) / (max(vel_elbow) - min(vel_elbow)) * 2 - 1;
-
-% manier 2: z-score
-shoulder_norm = (angles_shoulder - mean(angles_shoulder)) / std(angles_shoulder);
-elbow_norm = (angles_elbow - mean(angles_elbow)) / std(angles_elbow);
-vel_shoulder_norm = (vel_shoulder - mean(vel_shoulder)) / std(vel_shoulder);
-vel_elbow_norm = (vel_elbow - mean(vel_elbow)) / std(vel_elbow);
-
-% - Bereken fasehoeken en CRP
-phase_angle_shoulder = atan2(vel_shoulder_norm, shoulder_norm);  % in radialen
-phase_angle_elbow = atan2(vel_elbow_norm, elbow_norm);  % in radialen
-
-crp1 = crp_angle_velocity(angle1, angle2, vel1, vel2);
-
-%% 5. CRP Methode 2: Hilbert Methode
-% - Gebruik Hilbert transform om fasen te verkrijgen
-% - Bereken CRP op basis van deze fasen
-
-% crp2_shoulder = ...;
-
-%% 6. Vergelijking CRP-methodes
-% - Plot of analyse van verschillen tussen beide methodes
-
-% figuren of statistieken ...
-
-%% 7. Export / Output
-% - Struct klaarzetten voor Persoon 4
-% - Opslaan van CRP-resultaten en afgeleiden
-
-% save('output_persoon3.mat', ...)
+% %% 1. Inlezen van Hoekdata (van Persoon 2)
+% % - Voeg hier code toe om de hoekdata in te lezen
+% % - Denk aan struct of matrixvorm, per gewricht
+% 
+% % voorbeeldstructuur:
+% % angles_shoulder = ...;
+% % angles_elbow = ...;
+% % angles_core = ...;
+% 
+% %% 2. Rotatiesnelheden Berekenen
+% % - Bereken eerste afgeleide van de hoeken
+% % - Voeg filtering toe indien nodig
+% 
+% % Voor snelheid:
+% vel_shoulder = diff(angles_shoulder) * fs;  % fs = sampling frequentie (300 Hz)
+% vel_elbow = diff(angles_elbow) * fs;
+% vel_core = diff(angles_core) * fs;
+% 
+% 
+% %% 3. Rotatieversnellingen Berekenen
+% % - Bereken tweede afgeleide van de hoeken
+% 
+% % Voor versnelling:
+% acc_shoulder = diff(vel_shoulder) * fs;
+% acc_elbow = diff(vel_elbow) * fs;
+% acc_core = diff(vel_core) * fs;
+% 
+% 
+% %% 4. CRP Methode 1: Hoek-Snelheid Methode
+% % Normaliseren van hoeken en snelheden:
+% % manier 1: (+-1)
+% shoulder_norm = (angles_shoulder - min(angles_shoulder)) / (max(angles_shoulder) - min(angles_shoulder)) * 2 - 1;
+% elbow_norm = (angles_elbow - min(angles_elbow)) / (max(angles_elbow) - min(angles_elbow)) * 2 - 1;
+% vel_shoulder_norm = (vel_shoulder - min(vel_shoulder)) / (max(vel_shoulder) - min(vel_shoulder)) * 2 - 1;
+% vel_elbow_norm = (vel_elbow - min(vel_elbow)) / (max(vel_elbow) - min(vel_elbow)) * 2 - 1;
+% 
+% % manier 2: z-score
+% shoulder_norm = (angles_shoulder - mean(angles_shoulder)) / std(angles_shoulder);
+% elbow_norm = (angles_elbow - mean(angles_elbow)) / std(angles_elbow);
+% vel_shoulder_norm = (vel_shoulder - mean(vel_shoulder)) / std(vel_shoulder);
+% vel_elbow_norm = (vel_elbow - mean(vel_elbow)) / std(vel_elbow);
+% 
+% % - Bereken fasehoeken en CRP
+% phase_angle_shoulder = atan2(vel_shoulder_norm, shoulder_norm);  % in radialen
+% phase_angle_elbow = atan2(vel_elbow_norm, elbow_norm);  % in radialen
+% 
+% crp1 = crp_angle_velocity(angle1, angle2, vel1, vel2);
+% 
+% %% 5. CRP Methode 2: Hilbert Methode
+% % - Gebruik Hilbert transform om fasen te verkrijgen
+% % - Bereken CRP op basis van deze fasen
+% 
+% % crp2_shoulder = ...;
+% 
+% %% 6. Vergelijking CRP-methodes
+% % - Plot of analyse van verschillen tussen beide methodes
+% 
+% % figuren of statistieken ...
+% 
+% %% 7. Export / Output
+% % - Struct klaarzetten voor Persoon 4
+% % - Opslaan van CRP-resultaten en afgeleiden
+% 
+% % save('output_persoon3.mat', ...)
