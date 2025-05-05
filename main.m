@@ -289,6 +289,38 @@ for i = 1:step:height(filtered_data)
     quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
 end
 
+
+%% Visualisatie van lokale assenstelsels Left Thigh (TL)
+
+figure;
+hold on;
+axis equal;
+xlabel('X (mm)'); ylabel('Y (mm)'); zlabel('Z (mm)');
+grid on;
+title('Lokale assenstelsels Left Thigh (TL) over tijd');
+view(3);
+
+% Om de 10 frames visualiseren
+step = 10;
+scale = 100;  % lengte van de assen
+
+for i = 1:step:height(filtered_data)
+    origin = HL(i, :);  % Origin = heup (zoals ingesteld in de TL-matrix)
+
+    % Extract attitude matrix TL op frame i
+    R = squeeze(TL(i, :, :));
+
+    % Assen (kolommen)
+    X = R(:, 1);
+    Y = R(:, 2);
+    Z = R(:, 3);
+
+    % Plot assen met quiver3
+    quiver3(origin(1), origin(2), origin(3), scale*X(1), scale*X(2), scale*X(3), 'r', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
+end
+
 %% Gecombineerde visualisatie van de segmenten
 
 figure;
@@ -383,3 +415,48 @@ ShoulderAngles = table(gamma, beta, alpha,'VariableNames', {'PlaneOfElevation_de
 % Toon eerste paar waarden
 disp('Eerste 10 rijen van de schouderhoeken (Euler/Cardan):');
 disp(ShoulderAngles(1:100,:));
+
+%% Lokale assenstelsel LEFT THIGH (TL) – origin = HL, Z-as naar lateraal
+
+amount_frames = height(filtered_data);
+TL = zeros(amount_frames, 3, 3);  % 3x3 matrix per frame
+
+% Coördinaten ophalen
+HL = [filtered_data.HLX, filtered_data.HLY, filtered_data.HLZ];         % heup links
+CLL = [filtered_data.CLLX, filtered_data.CLLY, filtered_data.CLLZ];     % condylus lateralis links
+CML = [filtered_data.CMLX, filtered_data.CMLY, filtered_data.CMLZ];     % condylus medialis links
+
+for i = 1:amount_frames
+    % Kniepunten
+    knee_lat = CLL(i, :);
+    knee_med = CML(i, :);
+    knee_mid = 0.5 * (knee_lat + knee_med);
+
+    % Origin verplaatst naar HL
+    origin = HL(i, :);
+
+    % X-as: van mediale naar laterale condylus (dwarsas) → richting buitenzijde
+    X = normalize(knee_lat - knee_med);  % lateraal gericht
+
+    % Z-as: orthogonaal op vlak gevormd door HL en kniecondylen, richting buiten
+    v1 = knee_lat - origin;
+    v2 = knee_med - origin;
+    Z = normalize(cross(v1, v2));  % lateraal gericht loodrecht vlak
+
+    % Y-as: orthogonaal op Z en X, naar voor
+    Y = cross(Z, X);
+
+    % Her-orthogonaliseren
+    X = cross(Y, Z);
+
+    % Eenheidsvectoren
+    X = Unity(X);
+    Y = Unity(Y);
+    Z = Unity(Z);
+
+    % Attitude matrix (kolommen = assen, origin = HL)
+    TL(i, :, :) = [X; Y; Z]';
+end
+
+disp('Attitude matrix TL (Left Thigh) aangemaakt.');
+
