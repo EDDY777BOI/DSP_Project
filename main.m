@@ -119,10 +119,10 @@ for i = 1:amount_frames
 
     % Z-as: lijn loodrecht op vlak gemaakt door Y-as en Y-as van Forearm,
     % naar rechts gericht
-    Yf = squeeze(F(i, :, 2));  % Y-as van forearm
-    %Yf = normalize(midpoint_elbow - PLR(i, :)); 
-
-    Z = cross(Yf,Y);
+    %Yf = normalize(midpoint_elbow - PLR(i, :)); % y as Forearm 
+    RF = squeeze(F(i, :, :));
+    Yf = RF(:,2); % 2e kolom de Y as
+    Z = cross(Y,Yf);
     
     % X-as: lijn loodrecht op Y en Z, gericht naar voor
     X = cross(Y,Z);
@@ -197,10 +197,11 @@ HL    = [filtered_data.HLX, filtered_data.HLY, filtered_data.HLZ];
 
 % Doorloop eerst alle frames
 for i = 1:amount_frames
+    origin = HL(i, :);  % Hip Left
     midpoint_SIPS = 0.5 * (SIPSR(i,:) + SIPSL(i,:));
 
-    % Z-as: tussen SIASR en SIASR, naar rechts gericht
-    Z = normalize(SIASR(i,:) - SIASL(i,:)); 
+    % Z-as: tussen SIASR en SIASR, naar links gericht
+    Z = normalize(SIASL(i,:) - SIASR(i,:)); 
 
     % X-as: orthogonaal op Z en parallel met lijn in het vlak gevormd door SIASR en SIASL en
     % midpoint_SIPS
@@ -220,7 +221,7 @@ for i = 1:amount_frames
     P(i, :, :) = [X; Y; Z]';
 end
 
-disp('Attitude matrix P (Pelvis) aangemaakt.');
+disp('Attitude matrix P (Pelvic) aangemaakt.');
 
 %% Lokale assenstelsel LEFT THIGH (TL) – origin = HL, Z-as naar lateraal
 
@@ -241,19 +242,35 @@ for i = 1:amount_frames
     % Origin verplaatst naar HL
     origin = HL(i, :);
 
-    % X-as: van mediale naar laterale condylus (dwarsas) → richting buitenzijde
-    X = normalize(knee_lat - knee_med);  % lateraal gericht
+    % Y-as: lijn tussen midpunt CLL/CML en oorsprong, naar boven gericht
+    Y = normalize(origin - knee_mid);
 
-    % Z-as: orthogonaal op vlak gevormd door HL en kniecondylen, richting buiten
-    v1 = knee_lat - origin;
-    v2 = knee_med - origin;
-    Z = normalize(cross(v1, v2));  % lateraal gericht loodrecht vlak
+    % Z-as: loodrecht op de y as, in het vlak gevormd door de oorsprong en
+    % CML/CLL, naar links gericht
+    v1 = CML(i,:) - origin;
+    v2 = CLL(i,:) - origin;
+    Z_temp = cross(v1, v2); % kruisproduct van de 2 vectoren, naar voor gericht
+    Z = cross(Z_temp, Y);
 
-    % Y-as: orthogonaal op Z en X, naar voor
-    Y = cross(Z, X);
+    % X-as: kruisproduct Y en Z, naar voor gericht (anterior)
+    X = cross(Y,Z);
 
     % Her-orthogonaliseren
-    X = cross(Y, Z);
+    Z = cross(Y, X);
+
+    % % X-as: van mediale naar laterale condylus (dwarsas) → richting buitenzijde
+    % X = normalize(knee_lat - knee_med);  % lateraal gericht
+    % 
+    % % Z-as: orthogonaal op vlak gevormd door HL en kniecondylen, richting buiten
+    % v1 = knee_lat - origin;
+    % v2 = knee_med - origin;
+    % Z = normalize(cross(v1, v2));  % lateraal gericht loodrecht vlak
+    % 
+    % % Y-as: orthogonaal op Z en X, naar voor
+    % Y = cross(Z, X);
+    % 
+    % % Her-orthogonaliseren
+    % X = cross(Y, Z);
 
     % Eenheidsvectoren
     X = Unity(X);
@@ -265,6 +282,48 @@ for i = 1:amount_frames
 end
 
 disp('Attitude matrix TL (Left Thigh) aangemaakt.');
+
+%% Lokale assenstelsel LEFT SHANK (SL) -- onderbeen
+
+amount_frames = height(filtered_data);
+SL = zeros(amount_frames, 3, 3);  % 3x3 matrix per frame
+
+% Coördinaten ophalen
+MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];     % malleolus lateralis links
+MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];     % malleolus medialis links
+CLL = [filtered_data.CLLX, filtered_data.CLLY, filtered_data.CLLZ];     % condylus lateralis links
+CML = [filtered_data.CMLX, filtered_data.CMLY, filtered_data.CMLZ];     % condylus medialis links
+
+for i = 1:amount_frames
+    % oorsprong tussen MLL en MML
+    origin = 0.5 * (MLL(i,:)) + (MML(i,:));
+
+    % Z-as: van mediale naar laterale malleolus naar links gericht
+    Z = normalize(MLL(i,:) - MML(i,:));
+ 
+    % X-as: loodrecht op torsionaal vlak van onderbeen (gevormd door
+    % CML/CLL en MML/MLL
+    v1 = CLL(i,:) - MML(i,:);
+    v2 = CML(i,:) - MLL(i,:);
+    X = cross(v1,v2);
+
+    % Y-as: orthogonaal op Z en X, naar boven
+    Y = cross(X, Z);
+
+    % Her-orthogonaliseren
+    X = cross(Y, Z);
+
+    % Eenheidsvectoren
+    X = Unity(X);
+    Y = Unity(Y);
+    Z = Unity(Z);
+
+    % Attitude matrix (kolommen = assen, origin = HL)
+    SL(i, :, :) = [X; Y; Z]';
+end
+
+disp('Attitude matrix SL (Left Shank) aangemaakt.');
+
 %% Visualisatie van lokale assenstelsel Upper Arm Right (U)
 
 figure;
@@ -295,7 +354,6 @@ for i = 1:step:height(filtered_data)
     % quiver3(origin(1), origin(2), origin(3), scale*X(1), scale*X(2), scale*X(3), 'r', 'LineWidth', 1.5);
     % quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
     % quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
-
     if i == 1
         qx = quiver3(origin(1), origin(2), origin(3), scale*X(1), scale*X(2), scale*X(3), 'r', 'LineWidth', 1.5);
         qy = quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
@@ -371,14 +429,14 @@ for i = 1:step:height(filtered_data)
     quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
 end
 
-%% %% Visualisatie van lokale assenstelsel Pelvis (P)
+%% %% Visualisatie van lokale assenstelsel Pelvic (P)
 
 figure;
 hold on;
 axis equal;
 xlabel('X (mm)'); ylabel('Y (mm)'); zlabel('Z (mm)');
 grid on;
-title('Lokale assenstelsels Pelvis (P) over tijd');
+title('Lokale assenstelsels Pelvic (P) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
@@ -401,7 +459,7 @@ for i = 1:step:height(filtered_data)
     quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
     quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
 end
-legend('X-as (voor)', 'Y-as (boven)', 'Z-as (rechts)');
+legend('X-as (voor)', 'Y-as (boven)', 'Z-as (links)');
 
 %% Visualisatie van lokale assenstelsels Left Thigh (TL)
 
@@ -433,8 +491,43 @@ for i = 1:step:height(filtered_data)
     quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
     quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
 end
+legend('X-as (voor)', 'Y-as (boven)', 'Z-as (links)');
 
-%% Gecombineerde visualisatie van de segmenten
+
+%% Visualisatie van lokale assenstelsels Left Shanks (SL)
+
+figure;
+hold on;
+axis equal;
+xlabel('X (mm)'); ylabel('Y (mm)'); zlabel('Z (mm)');
+grid on;
+title('Lokale assenstelsels Left Shank (SL) over tijd');
+view(3);
+
+% Om de 10 frames visualiseren
+step = 10;
+scale = 100;  % lengte van de assen
+
+for i = 1:step:height(filtered_data)
+    % oorsprong tussen MLL en MML
+    origin = 0.5 * (MLL(i,:)) + (MML(i,:));
+
+    % Extract attitude matrix TL op frame i
+    R = squeeze(SL(i, :, :));
+
+    % Assen (kolommen)
+    X = R(:, 1);
+    Y = R(:, 2);
+    Z = R(:, 3);
+
+    % Plot assen met quiver3
+    quiver3(origin(1), origin(2), origin(3), scale*X(1), scale*X(2), scale*X(3), 'r', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
+end
+    legend('X-as (voor)', 'Y-as (boven)', 'Z-as (links)');
+
+%% Gecombineerde visualisatie van Upper arm (U) en Thorax (T)
 
 figure;
 hold on;
@@ -457,16 +550,6 @@ for i = 1:step:amount_frames
     quiver3(origin_U(1), origin_U(2), origin_U(3), scale*YU(1), scale*YU(2), scale*YU(3), 'g', 'LineWidth', 1.5);
     quiver3(origin_U(1), origin_U(2), origin_U(3), scale*ZU(1), scale*ZU(2), scale*ZU(3), 'b', 'LineWidth', 1.5);
 
-    % Forearm (F)
-    origin_F = PMR(i, :);                 % pols (PMR) als oorsprong (~ US)
-    RF = squeeze(F(i, :, :));             % attitude matrix F
-    XF = RF(:,1); YF = RF(:,2); ZF = RF(:,3);
-    
-   
-    quiver3(origin_F(1), origin_F(2), origin_F(3), scale*XF(1), scale*XF(2), scale*XF(3), 'm', 'LineWidth', 1.5);  
-    quiver3(origin_F(1), origin_F(2), origin_F(3), scale*YF(1), scale*YF(2), scale*YF(3), 'c', 'LineWidth', 1.5);  
-    quiver3(origin_F(1), origin_F(2), origin_F(3), scale*ZF(1), scale*ZF(2), scale*ZF(3), 'k', 'LineWidth', 1.5);  
-
     % Thorax (T)
     origin_T = MS(i,:);                   % Ms als oorsprong (~IJ)
     RT = squeeze(T(i,:,:));               % attitude matrix T
@@ -477,7 +560,48 @@ for i = 1:step:amount_frames
     quiver3(origin_T(1), origin_T(2), origin_T(3), scale*ZT(1), scale*ZT(2), scale*ZT(3), 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5); % grijze kleur
 
 end
-legend('Ux', 'Uy', 'Uz', 'Fx', 'Fy', 'Fz', 'Tx', 'Ty', 'Tz');
+legend('Ux', 'Uy', 'Uz', 'Tx', 'Ty', 'Tz');
+
+
+%% Gecombineerde visualisatie van Pelvis (P) en Left Thigh (TL)
+
+figure;
+hold on;
+axis equal;
+xlabel('X (mm)'); ylabel('Y (mm)'); zlabel('Z (mm)');
+grid on;
+title('Pelvis (P) & Left Thigh (TL) – Gecombineerde visualisatie');
+view(3);
+
+scale = 100;   % lengte van de assen
+step = 10;
+
+for i = 1:step:amount_frames
+    % Origin = HL (heup links)
+    origin = HL(i, :);
+
+    % Extract attitude matrices
+    RP = squeeze(P(i, :, :));  % Pelvis
+    RTL = squeeze(TL(i, :, :)); % Left Thigh
+
+    % Pelvis-assen
+    XP = RP(:, 1); YP = RP(:, 2); ZP = RP(:, 3);
+    % Thigh-assen
+    XTL = RTL(:, 1); YTL = RTL(:, 2); ZTL = RTL(:, 3);
+
+    % Pelvis (rood/groen/blauw)
+    quiver3(origin(1), origin(2), origin(3), scale*XP(1), scale*XP(2), scale*XP(3), 'r', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*YP(1), scale*YP(2), scale*YP(3), 'g', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*ZP(1), scale*ZP(2), scale*ZP(3), 'b', 'LineWidth', 1.5);
+
+    % Thigh (magenta/cyaan/zwart)
+    quiver3(origin(1), origin(2), origin(3), scale*XTL(1), scale*XTL(2), scale*XTL(3), 'm', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*YTL(1), scale*YTL(2), scale*YTL(3), 'c', 'LineWidth', 1.5);
+    quiver3(origin(1), origin(2), origin(3), scale*ZTL(1), scale*ZTL(2), scale*ZTL(3), 'k', 'LineWidth', 1.5);
+end
+
+legend('Pelvis X','Pelvis Y','Pelvis Z','Thigh X','Thigh Y','Thigh Z');
+
 
 
 %% Rotatie matrices & Euler/Cardan angles
@@ -492,7 +616,6 @@ for i = 1:amount_frames
     
     % Relatieve matrix: Upper arm relative to Thorax
     R_rel_UT = RT.' * RU; 
-    R_UT(i,:,:) = R_rel_UT;
 
     % Relatieve matrix: Forarm relative to Upper arm
     R_rel_FU = RU.' * RF;
@@ -500,11 +623,32 @@ for i = 1:amount_frames
     % Relatieve matrix: Thorax relative to Pelvic
     R_rel_TP = RP.' * RT;
 
-    % Euler-hoeken voor Shoulder motion based on R_rel_UT (ISB: Y-X-Y volgorde)
-    euler_rad = rotm2eul(R_rel_UT, 'YXY');  % [gamma beta alpha] in radialen
-    euler_shoulder_rad(i,:) = euler_rad;
+    % Relatieve matrix: Shank Left relative to Thigh Left
 
-    % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: ... volgorde)
+    % Euler-hoeken voor Shoulder motion based on R_rel_UT (ISB: Y-X-Y volgorde)
+    % met Y = Ythorax, X = Xhumerus, Y = Yhumerus
+    %euler_rad = rotm2eul(R_rel_UT, 'YXY');  % [gamma beta alpha] in radialen
+    %euler_shoulder_rad(i,:) = euler_rad;
+    Yt = RT(:,2);  % 2e kolom van Thorax = Y-as thorax
+    Xh = RU(:,1);  % 1e kolom van Upper arm = X-as humerus
+    Yh = RU(:,2);  % 2e kolom van Upper arm = Y-as humerus
+    
+    euler_angles_shoulder_deg = computeEulerFromAxes(R_rel_UT, Yt, Xh, Yh);  
+    euler_shoulder_deg(i,:) = euler_angles_shoulder_deg;
+    % unwrap de euler angles om sprongen van 180 graden weg te filteren
+    euler_shoulder_deg_unwrapped = unwrapEulerAngles(euler_shoulder_deg);
+
+    
+    % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: Z-X-Y volgorde)
+    % met Z = Zhumerus, X = Xforearm (loodrecht op Z en Y), Y = Yforearm
+    Zh = RU(:,3);
+    Xf = RF(:,1);
+    Yf = RF(:,2);
+    
+    euler_angles_elbow_deg = computeEulerFromAxes(R_rel_FU, Zh, Xf, Yf);
+    euler_elbow_deg(i,:) = euler_angles_elbow_deg;
+    euler_elbow_deg_unwrapped = unwrapEulerAngles(euler_elbow_deg);
+
 
     % Euler-hoeken voor Core motion based on R_rel_TP (ISB: ... volgorde)
 
@@ -518,6 +662,11 @@ for i = 1:amount_frames
 
     
 end
+
+    % unwrap de euler angles
+    %euler_shoulder_rad_unwrapped = unwrap(euler_shoulder_rad);
+    %euler_shoulder_rad_unwrapped = unwrap(ShoulderAnglesISB);
+
     % Check of de rotatiematrices orthonormaal zijn, dit is vereist voor de
     % rotm2eul functie
     orthonormaal = norm(R_rel_UT * R_rel_UT.' - eye(3)) < 1e-6; % moet true zijn
@@ -531,22 +680,26 @@ disp('R_rel_FU (Forearm relative to Upper arm) aangemaakt.');
 
 %% EULER/CARDAN angles in degrees
 
-% Omzetten naar graden
-euler_shoulder_deg = rad2deg(euler_shoulder_rad);
-
+% SHOULDER
 % Optioneel opsplitsen
-gamma  = euler_shoulder_deg(:,1);  % plane of elevation
-beta   = euler_shoulder_deg(:,2);  % elevation
-alpha  = euler_shoulder_deg(:,3);  % axial rotation
+gammaS  = euler_shoulder_deg_unwrapped(:,1);  % plane of elevation
+betaS   = euler_shoulder_deg_unwrapped(:,2);  % elevation
+alphaS  = euler_shoulder_deg_unwrapped(:,3);  % axial rotation
 
 % Struct voor overzicht
-ShoulderAngles = table(gamma, beta, alpha,'VariableNames', {'PlaneOfElevation_deg','Elevation_deg','AxialRotation_deg'});
+ShoulderAngles = table(gammaS, betaS, alphaS,'VariableNames', {'PlaneOfElevation_deg','Elevation_deg','AxialRotation_deg'});
 
 % Toon eerste paar waarden
 disp('Eerste 10 rijen van de schouderhoeken (Euler/Cardan):');
 disp(ShoulderAngles(1:100,:));
 
-
+% ELBOW
+gammaE = euler_elbow_deg_unwrapped(:,1);
+betaE  = euler_elbow_deg_unwrapped(:,2);
+alphaE = euler_elbow_deg_unwrapped(:,3);
+ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_deg','Carrying_angle_deg,','AxialRotation_deg'});
+disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
+disp(ElbowAngles(1:100,:));
 
 %%
 % ======================================
