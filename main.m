@@ -732,6 +732,24 @@ plot3(PLR(BR_index,1), PLR(BR_index,2), PLR(BR_index,3), 'ro', 'MarkerSize', 8, 
 title('3D Trajectory of PLR'); xlabel('X'); ylabel('Y'); zlabel('Z'); grid on;
 legend('Trajectory', 'Ball Release');
 
+%% FOOT CONTACT LEFT LEG (FC)
+% 1) Gemiddelde X-positie van malleoli
+MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];
+MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];
+x_mal = 0.5*(MLL(:,1) + MML(:,1));    % gemiddelde X-positie
+
+% 2) Snelheid en versnelling  
+vel_mal = [0; diff(x_mal)/dt];        % mm/s
+acc_mal = [0; diff(vel_mal)/dt];      % mm/s^2
+% negatieve waardes betekenen dat de voet in de negatieve X-richting
+% beweegt, dus dat die terug gaat
+
+% % 3) Zoek foot contact
+window = 410:470;
+[~, idx]  = max(abs(acc_mal(window))); % '~' = de waarde slaan we over, 'idx' is pos. binnen window
+fc_frame  = window(idx);               % map de relatieve idx naar je échte frame
+
+
 %%
 % ======================================
 % 3D KINEMATICA – PERSOON 3 TEMPLATE
