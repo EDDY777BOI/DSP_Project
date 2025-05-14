@@ -701,6 +701,23 @@ ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_d
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
 disp(ElbowAngles(1:100,:));
 
+%% FOOT CONTACT LEFT LEG (FC)
+% 1) Gemiddelde X-positie van malleoli
+MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];
+MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];
+x_mal = 0.5*(MLL(:,1) + MML(:,1));    % gemiddelde X-positie
+
+% 2) Snelheid en versnelling  
+vel_mal = [0; diff(x_mal)/dt];        % mm/s
+acc_mal = [0; diff(vel_mal)/dt];      % mm/s^2
+% negatieve waardes betekenen dat de voet in de negatieve X-richting
+% beweegt, dus dat die terug gaat
+
+% % 3) Zoek foot contact
+window = 410:470;
+[~, idx]  = max(abs(acc_mal(window))); % '~' = de waarde slaan we over, 'idx' is pos. binnen window
+fc_frame  = window(idx);               % map de relatieve idx naar je échte frame
+
 %%
 % ======================================
 % 3D KINEMATICA – PERSOON 3 TEMPLATE
