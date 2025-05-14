@@ -609,22 +609,27 @@ legend('Pelvis X','Pelvis Y','Pelvis Z','Thigh X','Thigh Y','Thigh Z');
 amount_frames = height(filtered_data);
 R_UT = zeros(amount_frames,3,3); 
 for i = 1:amount_frames
+    % squeeze haalt de overbodige dimensie weg zodat je een 3x3 matrix krijgt
+    % U(i,:,:) heeft vorm [1,3,3] en wij hebben [3,3] nodig
     RU = squeeze(U(i,:,:)); % 3x3 upper arm
     RT = squeeze(T(i,:,:)); % 3x3 thorax
     RF = squeeze(F(i,:,:)); % 3x3 forearm
     RP = squeeze(P(i,:,:)); % 3x3 pelvic
-    
+    RTL = squeeze(TL(i,:,:)); % 3x3 left thigh
+    RSL = squeeze(SL(i,:,:)); % 3x3 left shank
+
+    % Relatieve matrix: R_rel = Rbase.' * Rsegment
+    % berekent 
     % Relatieve matrix: Upper arm relative to Thorax
     R_rel_UT = RT.' * RU; 
-
     % Relatieve matrix: Forarm relative to Upper arm
     R_rel_FU = RU.' * RF;
-
     % Relatieve matrix: Thorax relative to Pelvic
     R_rel_TP = RP.' * RT;
-
     % Relatieve matrix: Shank Left relative to Thigh Left
+    R_rel_STL = RTL.' * RSL;
 
+    % SHOULDER
     % Euler-hoeken voor Shoulder motion based on R_rel_UT (ISB: Y-X-Y volgorde)
     % met Y = Ythorax, X = Xhumerus, Y = Yhumerus
     %euler_rad = rotm2eul(R_rel_UT, 'YXY');  % [gamma beta alpha] in radialen
@@ -638,7 +643,7 @@ for i = 1:amount_frames
     % unwrap de euler angles om sprongen van 180 graden weg te filteren
     euler_shoulder_deg_unwrapped = unwrapEulerAngles(euler_shoulder_deg);
 
-    
+    % ELBOW
     % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: Z-X-Y volgorde)
     % met Z = Zhumerus, X = Xforearm (loodrecht op Z en Y), Y = Yforearm
     Zh = RU(:,3);
@@ -649,36 +654,54 @@ for i = 1:amount_frames
     euler_elbow_deg(i,:) = euler_angles_elbow_deg;
     euler_elbow_deg_unwrapped = unwrapEulerAngles(euler_elbow_deg);
 
-
+    % CORE
     % Euler-hoeken voor Core motion based on R_rel_TP (ISB: ... volgorde)
+    Xp = RP(:,1);
+    Yp = RP(:,2);
+    Zp = RP(:,3);
+    
+    euler_angles_core_deg = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp);
+    euler_core_deg(i,:) = euler_angles_core_deg;
+    euler_core_deg_unwrapped = unwrapEulerAngles(euler_core_deg);
 
+    % PELVIS
     % Euler-hoeken voor Pelvis motion within global frame based on
     % att_mat_P (ISB: ... volgorde)
+    % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
+    % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
+    euler_pelvis_rad = rotm2eul(RP, 'XYZ');
+    euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
+    euler_pelvis_deg_unwrapped = unwrapEulerAngles(euler_pelvis_deg);
 
     % Euler-hoeken voor Thorax motion within global frame based on
     % att_mat_T (ISB: ... volgorde)
+    % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
+    % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
+    euler_thorax_rad = rotm2eul(RT, 'XYZ');
+    euler_thorax_deg(i,:) = rad2deg(euler_thorax_rad);
+    euler_thorax_deg_unwrapped = unwrapEulerAngles(euler_thorax_deg);
 
     % Euler-hoeken voor Left Knee motion based on R_rel_STL (ISB: ... volgorde)
+    Xtl = RTL(:,1);
+    Ytl = RTL(:,2);
+    Ztl = RTL(:,3);
+    
+    euler_angles_LKnee_deg = computeEulerFromAxes(R_rel_STL, Xtl, Ytl, Ztl);
+    euler_LKnee_deg(i,:) = euler_angles_LKnee_deg;
+    euler_LKnee_deg_unwrapped = unwrapEulerAngles(euler_LKnee_deg);
 
     
 end
 
-    % unwrap de euler angles
-    %euler_shoulder_rad_unwrapped = unwrap(euler_shoulder_rad);
-    %euler_shoulder_rad_unwrapped = unwrap(ShoulderAnglesISB);
-
-    % Check of de rotatiematrices orthonormaal zijn, dit is vereist voor de
-    % rotm2eul functie
+    % Check of de rotatiematrices orthonormaal zijn
     orthonormaal = norm(R_rel_UT * R_rel_UT.' - eye(3)) < 1e-6; % moet true zijn
     determinant = det(R_rel_UT); % moet dicht bij 1 liggen
-    disp(orthonormaal);
-    disp(determinant);
+    fprintf('orthonormaal? (1 is ja) : %d\n',orthonormaal);
+    fprintf('determinant = 1? : %d\n',floor(determinant));
 
-disp('R_rel_UT (Upper arm relative to Thorax) aangemaakt.');
-disp('R_rel_FU (Forearm relative to Upper arm) aangemaakt.');
+disp('Relative rotation matrices generated')
 
-
-%% EULER/CARDAN angles in degrees
+%% EULER/CARDAN angles print
 
 % SHOULDER
 % Optioneel opsplitsen
@@ -697,9 +720,47 @@ disp(ShoulderAngles(1:100,:));
 gammaE = euler_elbow_deg_unwrapped(:,1);
 betaE  = euler_elbow_deg_unwrapped(:,2);
 alphaE = euler_elbow_deg_unwrapped(:,3);
-ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_deg','Carrying_angle_deg,','AxialRotation_deg'});
+ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_deg','Carrying_angle_deg','AxialRotation_deg'});
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
-disp(ElbowAngles(1:100,:));
+disp(ElbowAngles(1:10,:));
+
+% CORE
+gammaC = euler_core_deg_unwrapped(:,1);
+betaC  = euler_core_deg_unwrapped(:,2);
+alphaC = euler_core_deg_unwrapped(:,3);
+CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'X','Y','Z'});
+disp('Eerste 10 rijen van de corehoeken (Euler/Cardan):');
+disp(CoreAngles(1:10,:));
+
+% PELVIS
+gammaP = euler_pelvis_deg_unwrapped(:,1);
+betaP  = euler_pelvis_deg_unwrapped(:,2);
+alphaP = euler_pelvis_deg_unwrapped(:,3);
+PelvisAngles = table(gammaP, betaP, alphaP,'VariableNames', {'X','Y','Z'});
+disp('Eerste 10 rijen van de pelvishoeken (Euler/Cardan):');
+disp(PelvisAngles(1:10,:));
+
+% THORAX
+gammaT = euler_thorax_deg_unwrapped(:,1);
+betaT  = euler_thorax_deg_unwrapped(:,2);
+alphaT = euler_thorax_deg_unwrapped(:,3);
+ThoraxAngles = table(gammaT, betaT, alphaT,'VariableNames', {'X','Y','Z'});
+disp('Eerste 10 rijen van de thoraxhoeken (Euler/Cardan):');
+disp(ThoraxAngles(1:10,:));
+
+% LEFT KNEE
+gammaLK = euler_LKnee_deg_unwrapped(:,1);
+betaLK  = euler_LKnee_deg_unwrapped(:,2);
+alphaLK = euler_LKnee_deg_unwrapped(:,3);
+LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
+disp('Eerste 10 rijen van de leftkneehoeken (Euler/Cardan):');
+disp(LeftKneeAngles(1:10,:));
+%% Plot euler angles to check if they are correct
+figure;
+subplot(3,1,1); plot(t, gammaS); title('Plane of Elevation'); ylabel('deg');
+subplot(3,1,2); plot(t, betaS); title('Elevation'); ylabel('deg');
+subplot(3,1,3); plot(t, alphaS); title('Axial Rotation'); xlabel('tijd (s)'); ylabel('deg');
+
 
 %%
 % ======================================
