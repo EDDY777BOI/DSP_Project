@@ -701,6 +701,37 @@ ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_d
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
 disp(ElbowAngles(1:100,:));
 
+%% Ball Release
+PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];
+fs = 300;                 % Sampling frequency in Hz
+dt = 1 / fs;              % Time step
+N = size(PLR, 1);         % Number of frames
+t = (0:N-1) * dt;         % Time vector in seconds
+FC_index = 427;
+
+vel = gradient(PLR, dt);
+acc = gradient(vel, dt);
+
+speed = vecnorm(vel, 2, 2);  % Euclidean norm per row
+
+post_FC_speed = speed(FC_index:end);
+[~, idx_max_speed] = max(post_FC_speed);
+
+BR_index = FC_index - 1 + idx_max_speed;
+BR_time = t(BR_index);
+
+figure;
+subplot(3,1,1); plot(t, PLR); title('PLR Position'); legend('X','Y','Z');
+subplot(3,1,2); plot(t, vel); title('PLR Velocity'); legend('Vx','Vy','Vz');
+subplot(3,1,3); plot(t, speed); title('PLR Speed');
+hold on; plot(BR_time, speed(BR_index), 'ro'); legend('Speed', 'Ball Release');
+
+figure;
+plot3(PLR(:,1), PLR(:,2), PLR(:,3), 'b-'); hold on;
+plot3(PLR(BR_index,1), PLR(BR_index,2), PLR(BR_index,3), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+title('3D Trajectory of PLR'); xlabel('X'); ylabel('Y'); zlabel('Z'); grid on;
+legend('Trajectory', 'Ball Release');
+
 %%
 % ======================================
 % 3D KINEMATICA – PERSOON 3 TEMPLATE
