@@ -776,6 +776,34 @@ subplot(3,1,3); plot(t, alphaS); title('Axial Rotation'); xlabel('tijd (s)'); yl
 fc = 10;          % cutoff in Hz
 [b,a] = butter(2, fc/(fs/2));
 % filtration of the shoulder angles:
+Bodypart = S % configure the bodypart (S = shoulder, E = elbow, P = pelvic, T = thorax, C = core, LK = left knee) 
+
+if Bodypart == S
+    gamma = gammaS;
+    beta = betaS;
+    alpha = alphaS;
+elseif  Bodypart == T
+    gamma = gammaT;
+    beta = betaT;
+    alpha = alphaT;
+elseif Bodypart == E
+    gamma = gammaE;
+    beta = betaE;
+    alpha = alphaE;
+elseif  Bodypart == P
+    gamma = gammaP;
+    beta = betaP;
+    alpha = alphaP;
+elseif Bodypart == LK
+    gamma = gammaLK
+    beta = betaLK
+    alpha = alphaLK
+elseif  Bodypart == C
+    gamma = gammaC
+    beta = betaC
+    alpha = alphaC
+end if
+
 gammaS_f = filtfilt(b, a, gammaS);
 betaS_f  = filtfilt(b, a, betaS);
 alphaS_f = filtfilt(b, a, alphaS);
@@ -837,4 +865,4 @@ D2alpha_f = filtfilt(b,a, D2alpha);
 % % - Struct klaarzetten voor Persoon 4
 % % - Opslaan van CRP-resultaten en afgeleiden
 % 
-% % save('output_persoon3.mat', ...)
+% % save('output_persoon3f.mat', ...)
