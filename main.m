@@ -762,6 +762,55 @@ subplot(3,1,2); plot(t, betaS); title('Elevation'); ylabel('deg');
 subplot(3,1,3); plot(t, alphaS); title('Axial Rotation'); xlabel('tijd (s)'); ylabel('deg');
 
 
+%% Ball Release
+PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];
+fs = 300;                 % Sampling frequency in Hz
+dt = 1 / fs;              % Time step
+N = size(PLR, 1);         % Number of frames
+t = (0:N-1) * dt;         % Time vector in seconds
+FC_index = 427;
+
+vel = gradient(PLR, dt);
+acc = gradient(vel, dt);
+
+speed = vecnorm(vel, 2, 2);  % Euclidean norm per row
+
+post_FC_speed = speed(FC_index:end);
+[~, idx_max_speed] = max(post_FC_speed);
+
+BR_index = FC_index - 1 + idx_max_speed;
+BR_time = t(BR_index);
+
+figure;
+subplot(3,1,1); plot(t, PLR); title('PLR Position'); legend('X','Y','Z');
+subplot(3,1,2); plot(t, vel); title('PLR Velocity'); legend('Vx','Vy','Vz');
+subplot(3,1,3); plot(t, speed); title('PLR Speed');
+hold on; plot(BR_time, speed(BR_index), 'ro'); legend('Speed', 'Ball Release');
+
+figure;
+plot3(PLR(:,1), PLR(:,2), PLR(:,3), 'b-'); hold on;
+plot3(PLR(BR_index,1), PLR(BR_index,2), PLR(BR_index,3), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+title('3D Trajectory of PLR'); xlabel('X'); ylabel('Y'); zlabel('Z'); grid on;
+legend('Trajectory', 'Ball Release');
+
+%% FOOT CONTACT LEFT LEG (FC)
+% 1) Gemiddelde X-positie van malleoli
+MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];
+MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];
+x_mal = 0.5*(MLL(:,1) + MML(:,1));    % gemiddelde X-positie
+
+% 2) Snelheid en versnelling  
+vel_mal = [0; diff(x_mal)/dt];        % mm/s
+acc_mal = [0; diff(vel_mal)/dt];      % mm/s^2
+% negatieve waardes betekenen dat de voet in de negatieve X-richting
+% beweegt, dus dat die terug gaat
+
+% % 3) Zoek foot contact
+window = 410:470;
+[~, idx]  = max(abs(acc_mal(window))); % '~' = de waarde slaan we over, 'idx' is pos. binnen window
+fc_frame  = window(idx);               % map de relatieve idx naar je échte frame
+
+
 %%
 % ======================================
 % 3D KINEMATICA – PERSOON 3 TEMPLATE
