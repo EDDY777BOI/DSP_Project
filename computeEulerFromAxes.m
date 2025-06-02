@@ -1,47 +1,100 @@
-function angles_deg = computeEulerFromAxes(R_rel, a1, a2, a3)
-% Algemene functie om Euler-hoeken te berekenen uit een rotatiematrix en 3 rotatie-assen
-% INPUT:
-%   R_rel : 3x3 rotatiematrix (bijv. R_rel_UT Upper arm t.o.v. Thorax)
-%   a1    : 3x1 vector, eerste rotatie-as (bv. Yt)
-%   a2    : 3x1 vector, tweede rotatie-as (bv. Xh)
-%   a3    : 3x1 vector, derde rotatie-as (bv. Yh)
-% OUTPUT:
-%   angles_deg : 1x3 vector [angle1, angle2, angle3] in graden
+function euler_deg = computeEulerFromAxes(R, a1, a2, a3, sequence)
+% Compute Euler angles from a rotation matrix with a specified rotation sequence and custom axes.
+%
+%   euler_deg = computeEulerFromAxes(R, a1, a2, a3, sequence) extracts a 1x3 vector
+%   of Euler angles (in degrees) from the 3x3 rotation matrix R, using custom rotation axes
+%   provided by a1, a2, and a3. The string 'sequence' defines the intended intrinsic rotation
+%   sequence. For example:
+%
+%       'YXY'  - First, rotate about a1 (to be aligned with [0;1;0]).
+%                Then about a2, and finally about a3.
+%
+%       'ZXY'  - First, rotate about a1 (to be aligned with [0;0;1]).
+%                Then about a2, and finally about a3.
+%
+%   INPUTS:
+%       R        - 3x3 rotation matrix 
+%       a1, a2, a3 - 3x1 vectors representing the first, second, and third rotation axes 
+%       sequence  - A string indicating the rotation sequence to use like 'YXY'
+%
+%   OUTPUT:
+%       euler_deg - 1x3 vector of Euler angles (in degrees). 
 
-% Normaliseer de assen voor de zekerheid as  = as/||as||
-a1 = Unity(a1);
-a2 = Unity(a2);
-a3 = Unity(a3);
 
-% Transformeer standaard basisassen door rotatiematrix
-X_rot = R_rel(:,1);
-Y_rot = R_rel(:,2);
-Z_rot = R_rel(:,3);
+    %% --- Normalize the axes.
+    tol = 1e-6;
+    a1 = a1 / norm(a1);
+    a2 = a2 / norm(a2);
+    a3 = a3 / norm(a3);
+    
+    %% --- Switch between rotation sequences
+    switch upper(sequence)
+        case 'YXY'
+            % --- For YXY: We want to force a1 to be the y-axis, i.e., [0; 1; 0].
+            y_new = a1;
+            % Project a2 onto the plane perpendicular to y_new to form the new x-axis.
+            x_new = a2 - dot(a2, y_new) * y_new;
+            if norm(x_new) < tol
+                error('a2 is nearly parallel to a1 in YXY branch.');
+            end
+            x_new = x_new / norm(x_new);
+            % Define the new z-axis to complete a right-handed system.
+            z_new = cross(y_new, x_new);
+            % Build the basis (change-of-basis) matrix Q.
+            Q = [x_new, y_new, z_new];
+            % Express R in the new coordinate system.
+            R_new = Q' * R * Q;
+            
+            % --- Standard intrinsic Y–X–Y extraction formulas, 
+            temp = max(min(R_new(2,2), 1), -1); % clamp the inputs to [-1, 1] so the acos can be calculated
+            beta = acos(temp);
+            if abs(sin(beta)) > tol
+                gamma = atan2(R_new(1,2), R_new(3,2));
+                alpha = atan2(R_new(2,1), -R_new(2,3));
+            else
+                % When beta is near 0 or pi, degrees of freedom are lost; use fallback.
+                gamma = atan2(-R_new(3,1), R_new(1,1));
+                alpha = 0;
+            end
+            euler_rad = [gamma, beta, alpha];
+            
+        case 'ZXY'
+            % --- For ZXY: We want to force a1 to be the z-axis, i.e., [0; 0; 1].
+            z_new = a1;
+            % Project a2 onto the plane perpendicular to z_new to form the new x-axis.
+            x_new = a2 - dot(a2, z_new) * z_new;
+            if norm(x_new) < tol
+                error('a2 is nearly parallel to a1 in ZXY branch.');
+            end
+            x_new = x_new / norm(x_new);
+            % Define the new y-axis from the right-hand rule.
+            y_new = cross(z_new, x_new);
+            % Build the basis matrix Q.
+            Q = [x_new, y_new, z_new];
+            % Express the rotation matrix in the new coordinate system.
+            R_new = Q' * R * Q;
+            
+            % --- Standard intrinsic Z–X–Y extraction.
+            % One common set of formulas for an intrinsic ZXY rotation (i.e., R = Rz(gamma)*Rx(beta)*Ry(alpha))
+            % is:
+            %   beta = asin(-R_new(3,2))
+            %   gamma = atan2(R_new(3,1), R_new(3,3))
+            %   alpha = atan2(R_new(1,2), R_new(2,2))
+            temp = max(min(-R_new(3,2), 1), -1); % Clamp the inputs to [-1, 1] so the asin can be calculated
+            beta = asin(temp);
+            if abs(cos(beta)) > tol
+                gamma = atan2(R_new(3,1), R_new(3,3));
+                alpha = atan2(R_new(1,2), R_new(2,2));
+            else
+                gamma = 0;
+                alpha = atan2(-R_new(2,1), R_new(1,1));
+            end
+            euler_rad = [gamma, beta, alpha];
+            
+        otherwise
+            error('Unsupported rotation sequence: %s', sequence);
+    end
 
-% Hoek 1: rotatie rond as a1 (bijv. Yt / plane of elevation)
-proj_a3 = a3 - dot(a3, a1) * a1;
-proj_Y = Y_rot - dot(Y_rot, a1) * a1;
-proj_a3 = proj_a3 / norm(proj_a3);
-proj_Y  = proj_Y / norm(proj_Y);
-
-cross1 = cross(proj_a3, proj_Y);
-sign1 = sign(dot(cross1, a1));
-angle1 = sign1 * acosd(dot(proj_a3, proj_Y)); % cosd = inverse cos in graden
-
-% Hoek 2: rotatie rond as a2 (bijv. Xh / elevation volgens ISB negatief)
-angle2 = asind(dot(cross(a1, Y_rot), a2)); 
-
-% Hoek 3: rotatie rond as a3 (bijv. Yh / axial rotation)
-proj_a2 = a2 - dot(a2, a1) * a1;
-proj_X  = X_rot - dot(X_rot, a1) * a1;
-proj_a2 = proj_a2 / norm(proj_a2);
-proj_X  = proj_X / norm(proj_X);
-
-cross3 = cross(proj_a2, proj_X);
-sign3 = sign(dot(cross3, a1));
-angle3 = sign3 * acosd(dot(proj_a2, proj_X));
-
-% Combineer in 1 rijvector zoals gebruikt in de main code
-angles_deg = [angle1, angle2, angle3];
-
+    %% --- unwrap and convert from radians to degrees
+    euler_deg = rad2deg(euler_rad);
 end

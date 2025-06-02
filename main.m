@@ -80,7 +80,8 @@ for i = 1:amount_frames
     % Attitude matrix (kolommen zijn assen)
     F(i, :, :) = [X; Y; Z]';
 end
-
+% Apply continuity-correction
+F = fixAttitudeContinuity(F);
 disp('Attitude matrix F (Forearm Right) aangemaakt.');
 
 %% Lokale assenstelsel UPPER ARM RIGHT (U) – volgens ISB
@@ -102,18 +103,6 @@ for i = 1:amount_frames
     elbow_med = EMR(i, :);
     midpoint_elbow = 0.5 * (elbow_lat + elbow_med);
     
-    % Deze assen waren volgens mij niet juist gedefinieerd
-
-    % % Z-as: van schouder naar midden elleboog
-    % midpoint_elbow = 0.5 * (elbow_lat + elbow_med);
-    % Z = normalize(PLR(i, :) - midpoint_elbow);  % van elleboog naar pols
-    % % X-as: dwarsas (van laterale naar mediale epicondyl)
-    % X = normalize(elbow_lat - elbow_med);  % van med naar lat
-    % % Y-as: orthogonaal (kruisproduct) = voorwaartse rotatieas
-    % Y = cross(Z, X);
-    % % Her-orthogonaliseren voor zekerheid (optioneel)
-    % X = cross(Y, Z);  % herbereken X zodat alle 3 orthogonaal zijn
-
     % Y-as: van midden elleboog naar schouder, richting schouder (AR)
     Y = normalize(AR(i,:) - midpoint_elbow);  
 
@@ -135,7 +124,8 @@ for i = 1:amount_frames
     % Attitude matrix (kolommen zijn assen)
     U(i, :, :) = [X; Y; Z]';
 end
-
+% Apply continuity-correction
+U = fixAttitudeContinuity(U);
 disp('Attitude matrix U (Upper Arm Right) aangemaakt.');
 
 
@@ -169,8 +159,6 @@ for i = 1:amount_frames
     % X-as: orthogonaal (kruisproduct) = voorwaartse rotatieas
     X = cross(Y, Z);
 
-    % Her-orthogonaliseren voor zekerheid (optioneel)
-    Y = cross(Z, X);  % herbereken X zodat alle 3 orthogonaal zijn
 
     % Van de vectoren eenheidsvectoren maken
     X = Unity(X);
@@ -180,7 +168,8 @@ for i = 1:amount_frames
     % Attitude matrix (kolommen zijn assen)
     T(i, :, :) = [X; Y; Z]';
 end
-
+% Apply continuity-correction
+T = fixAttitudeContinuity(T);
 disp('Attitude matrix T (Thorax) aangemaakt.');
 
 %% Lokale assenstelsel Pelvic (P) – volgens ISB
@@ -220,7 +209,8 @@ for i = 1:amount_frames
     % Attitude matrix (kolommen zijn assen)
     P(i, :, :) = [X; Y; Z]';
 end
-
+% Apply continuity-correction
+P = fixAttitudeContinuity(P);
 disp('Attitude matrix P (Pelvic) aangemaakt.');
 
 %% Lokale assenstelsel LEFT THIGH (TL) – origin = HL, Z-as naar lateraal
@@ -258,20 +248,6 @@ for i = 1:amount_frames
     % Her-orthogonaliseren
     Z = cross(Y, X);
 
-    % % X-as: van mediale naar laterale condylus (dwarsas) → richting buitenzijde
-    % X = normalize(knee_lat - knee_med);  % lateraal gericht
-    % 
-    % % Z-as: orthogonaal op vlak gevormd door HL en kniecondylen, richting buiten
-    % v1 = knee_lat - origin;
-    % v2 = knee_med - origin;
-    % Z = normalize(cross(v1, v2));  % lateraal gericht loodrecht vlak
-    % 
-    % % Y-as: orthogonaal op Z en X, naar voor
-    % Y = cross(Z, X);
-    % 
-    % % Her-orthogonaliseren
-    % X = cross(Y, Z);
-
     % Eenheidsvectoren
     X = Unity(X);
     Y = Unity(Y);
@@ -280,7 +256,8 @@ for i = 1:amount_frames
     % Attitude matrix (kolommen = assen, origin = HL)
     TL(i, :, :) = [X; Y; Z]';
 end
-
+% Apply continuity-correction
+TL = fixAttitudeContinuity(TL);
 disp('Attitude matrix TL (Left Thigh) aangemaakt.');
 
 %% Lokale assenstelsel LEFT SHANK (SL) -- onderbeen
@@ -321,7 +298,8 @@ for i = 1:amount_frames
     % Attitude matrix (kolommen = assen, origin = HL)
     SL(i, :, :) = [X; Y; Z]';
 end
-
+% Apply continuity-correction
+SL = fixAttitudeContinuity(SL);
 disp('Attitude matrix SL (Left Shank) aangemaakt.');
 
 %% Visualisatie van lokale assenstelsel Upper Arm Right (U)
@@ -608,6 +586,14 @@ legend('Pelvis X','Pelvis Y','Pelvis Z','Thigh X','Thigh Y','Thigh Z');
 
 amount_frames = height(filtered_data);
 R_UT = zeros(amount_frames,3,3); 
+% Arrays voor Euler-angles
+euler_shoulder_deg = zeros(amount_frames, 3);
+euler_elbow_deg    = zeros(amount_frames, 3);
+euler_core_deg     = zeros(amount_frames, 3);
+euler_pelvis_deg   = zeros(amount_frames, 3);
+euler_thorax_deg   = zeros(amount_frames, 3);
+euler_LKnee_deg    = zeros(amount_frames, 3);
+
 for i = 1:amount_frames
     % squeeze haalt de overbodige dimensie weg zodat je een 3x3 matrix krijgt
     % U(i,:,:) heeft vorm [1,3,3] en wij hebben [3,3] nodig
@@ -620,15 +606,12 @@ for i = 1:amount_frames
 
     % Relatieve matrix: R_rel = Rbase.' * Rsegment
     % berekent 
-    % Relatieve matrix: Upper arm relative to Thorax
-    R_rel_UT = RT.' * RU; 
-    % Relatieve matrix: Forarm relative to Upper arm
-    R_rel_FU = RU.' * RF;
-    % Relatieve matrix: Thorax relative to Pelvic
-    R_rel_TP = RP.' * RT;
-    % Relatieve matrix: Shank Left relative to Thigh Left
-    R_rel_STL = RTL.' * RSL;
+    R_rel_UT = RT.' * RU; % Relatieve matrix: Upper arm relative to Thorax
+    R_rel_FU = RU.' * RF; % Relatieve matrix: Forarm relative to Upper arm
+    R_rel_TP = RP.' * RT; % Relatieve matrix: Thorax relative to Pelvic
+    R_rel_STL = RTL.' * RSL; % Relatieve matrix: Shank Left relative to Thigh Left
 
+  
     % SHOULDER
     % Euler-hoeken voor Shoulder motion based on R_rel_UT (ISB: Y-X-Y volgorde)
     % met Y = Ythorax, X = Xhumerus, Y = Yhumerus
@@ -637,11 +620,7 @@ for i = 1:amount_frames
     Yt = RT(:,2);  % 2e kolom van Thorax = Y-as thorax
     Xh = RU(:,1);  % 1e kolom van Upper arm = X-as humerus
     Yh = RU(:,2);  % 2e kolom van Upper arm = Y-as humerus
-    
-    euler_angles_shoulder_deg = computeEulerFromAxes(R_rel_UT, Yt, Xh, Yh);  
-    euler_shoulder_deg(i,:) = euler_angles_shoulder_deg;
-    % unwrap de euler angles om sprongen van 180 graden weg te filteren
-    euler_shoulder_deg_unwrapped = unwrapEulerAngles(euler_shoulder_deg);
+    euler_shoulder_deg(i,:) = computeEulerFromAxes(R_rel_UT, Yt, Xh, Yh, 'YXY');
 
     % ELBOW
     % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: Z-X-Y volgorde)
@@ -649,20 +628,14 @@ for i = 1:amount_frames
     Zh = RU(:,3);
     Xf = RF(:,1);
     Yf = RF(:,2);
-    
-    euler_angles_elbow_deg = computeEulerFromAxes(R_rel_FU, Zh, Xf, Yf);
-    euler_elbow_deg(i,:) = euler_angles_elbow_deg;
-    euler_elbow_deg_unwrapped = unwrapEulerAngles(euler_elbow_deg);
+    euler_elbow_deg(i,:) = computeEulerFromAxes(R_rel_FU, Zh, Xf, Yf, 'ZXY');
 
     % CORE
-    % Euler-hoeken voor Core motion based on R_rel_TP (ISB: ... volgorde)
+    % Euler-hoeken voor Core motion based on R_rel_TP (ISB: geen volgorde gegeven)
     Xp = RP(:,1);
     Yp = RP(:,2);
     Zp = RP(:,3);
-    
-    euler_angles_core_deg = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp);
-    euler_core_deg(i,:) = euler_angles_core_deg;
-    euler_core_deg_unwrapped = unwrapEulerAngles(euler_core_deg);
+    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp, 'YXY'); 
 
     % PELVIS
     % Euler-hoeken voor Pelvis motion within global frame based on
@@ -671,7 +644,6 @@ for i = 1:amount_frames
     % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
     euler_pelvis_rad = rotm2eul(RP, 'XYZ');
     euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
-    euler_pelvis_deg_unwrapped = unwrapEulerAngles(euler_pelvis_deg);
 
     % Euler-hoeken voor Thorax motion within global frame based on
     % att_mat_T (ISB: ... volgorde)
@@ -679,25 +651,28 @@ for i = 1:amount_frames
     % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
     euler_thorax_rad = rotm2eul(RT, 'XYZ');
     euler_thorax_deg(i,:) = rad2deg(euler_thorax_rad);
-    euler_thorax_deg_unwrapped = unwrapEulerAngles(euler_thorax_deg);
 
     % Euler-hoeken voor Left Knee motion based on R_rel_STL (ISB: ... volgorde)
     Xtl = RTL(:,1);
     Ytl = RTL(:,2);
     Ztl = RTL(:,3);
-    
-    euler_angles_LKnee_deg = computeEulerFromAxes(R_rel_STL, Xtl, Ytl, Ztl);
-    euler_LKnee_deg(i,:) = euler_angles_LKnee_deg;
-    euler_LKnee_deg_unwrapped = unwrapEulerAngles(euler_LKnee_deg);
+    euler_LKnee_deg(i,:) = computeEulerFromAxes(R_rel_STL, Xtl, Ytl, Ztl, 'YXY');
 
-    
 end
+    
+% Unwrap Euler-angles om sprongen weg te halen
+euler_shoulder_deg_unwrapped = unwrapEulerAngles(euler_shoulder_deg);
+euler_elbow_deg_unwrapped    = unwrapEulerAngles(euler_elbow_deg);
+euler_core_deg_unwrapped     = unwrapEulerAngles(euler_core_deg);
+euler_pelvis_deg_unwrapped   = unwrapEulerAngles(euler_pelvis_deg);
+euler_thorax_deg_unwrapped   = unwrapEulerAngles(euler_thorax_deg);
+euler_LKnee_deg_unwrapped    = unwrapEulerAngles(euler_LKnee_deg);
 
     % Check of de rotatiematrices orthonormaal zijn
-    orthonormaal = norm(R_rel_UT * R_rel_UT.' - eye(3)) < 1e-6; % moet true zijn
-    determinant = det(R_rel_UT); % moet dicht bij 1 liggen
-    fprintf('orthonormaal? (1 is ja) : %d\n',orthonormaal);
-    fprintf('determinant = 1? : %d\n',floor(determinant));
+    %orthonormaal = norm(R_rel_UT * R_rel_UT.' - eye(3)) < 1e-6; % moet true zijn
+    %determinant = det(R_rel_UT); % moet dicht bij 1 liggen
+    %fprintf('orthonormaal? (1 is ja) : %d\n',orthonormaal);
+    %fprintf('determinant = 1? : %d\n',floor(determinant));
 
 disp('Relative rotation matrices generated')
 
@@ -753,7 +728,7 @@ gammaLK = euler_LKnee_deg_unwrapped(:,1);
 betaLK  = euler_LKnee_deg_unwrapped(:,2);
 alphaLK = euler_LKnee_deg_unwrapped(:,3);
 LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
-disp('Eerste 10 rijen van de leftkneehoeken (Euler/Cardan):');
+disp('Eerste 10 rijen van de leftkne2ehoeken (Euler/Cardan):');
 disp(LeftKneeAngles(1:10,:));
 %% Plot euler angles to check if they are correct
 figure;
@@ -761,6 +736,36 @@ subplot(3,1,1); plot(t, gammaS); title('Plane of Elevation'); ylabel('deg');
 subplot(3,1,2); plot(t, betaS); title('Elevation'); ylabel('deg');
 subplot(3,1,3); plot(t, alphaS); title('Axial Rotation'); xlabel('tijd (s)'); ylabel('deg');
 
+%%
+% Example: plot R_rel_UT(2,2) versus Euler elevation angle (beta)
+R22 = zeros(amount_frames,1);    % Preallocate vector
+
+for i = 1:amount_frames
+    % Extract element (2,2) from R_rel_UT for each frame.
+    % If R_rel_UT is not explicitly stored over time, you can compute it again,
+    % or store it in your loop.
+    RU = squeeze(U(i,:,:));        
+    RT = squeeze(T(i,:,:));        
+    R_rel_UT = RT.' * RU;           % Upper arm relative to Thorax
+    R22(i) = R_rel_UT(2,2);
+end
+
+% Create a figure with two subplots side by side.
+figure;
+subplot(2,1,1);
+plot(t, R22, 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('R_{22}');
+title('Rotation Matrix Element R_{22} versus Time');
+grid on;
+
+subplot(2,1,2);
+% In this example, euler_shoulder_deg_unwrapped(:,2) represents the "elevation" angle.
+plot(t, euler_shoulder_deg_unwrapped(:,2), 'r', 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('Elevation (deg)');
+title('Shoulder Euler Elevation Angle versus Time');
+grid on;
 
 %%
 % ======================================
