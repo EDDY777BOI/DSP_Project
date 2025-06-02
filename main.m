@@ -30,6 +30,11 @@ for i = 1:width(data)
     filtered_data{:, i} = filtfilt(b, a, column);
 end
 
+
+% app.FilteredData = loadAndFilterTSV('10Ax1.tsv', 10, 300);
+
+
+
 % Finding marker names
 all_vars = data.Properties.VariableNames;             % get all the names of the columns
 markers = unique(regexprep(all_vars, '[XYZ]$', ''));  % unique marker labels
@@ -820,3 +825,26 @@ fc_frame  = window(idx);               % map de relatieve idx naar je échte fra
 % % - Opslaan van CRP-resultaten en afgeleiden
 % 
 % % save('output_persoon3.mat', ...)
+
+
+%% MICHAIL
+filtered_data = loadAndFilterTSV('10Ax1.tsv', 10, 300);
+fs = 300;           % samplefrequentie in Hz
+[F, U, T, P, TL, SL] = computeLocalFrames(filtered_data);
+[R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL] = computeRelativeRotations(U, F, T, P, TL, SL);
+[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F);
+% (optioneel: toon eerste paar regels in Command Window)
+disp('Eerste 5 rijen Schouderhoeken (deg):');
+disp(Euler_shoulder(1:5,:));
+disp('Eerste 5 rijen Ellebooghoeken (deg):');
+disp(Euler_elbow(1:5,:));
+
+% Bereken Foot Contact (Left Leg)
+window_FC = 410 : 470;  % voorbeeld‐range; pas aan na onderzoek van je data
+FC_index = computeFootContactLeftLeg(filtered_data, window_FC, fs);
+fprintf('Foot contact op frame %d (t = %.3f s)\n', FC_index, FC_index/fs);
+
+
+% Bereken Ball Release (max‐snelheid na FC)
+[BR_index, BR_time] = computeBallRelease(filtered_data, FC_index, fs);
+fprintf('Ball release op frame %d (t = %.3f s)\n', BR_index, BR_time);
