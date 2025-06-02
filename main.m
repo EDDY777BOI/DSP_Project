@@ -620,7 +620,7 @@ for i = 1:amount_frames
     Yt = RT(:,2);  % 2e kolom van Thorax = Y-as thorax
     Xh = RU(:,1);  % 1e kolom van Upper arm = X-as humerus
     Yh = RU(:,2);  % 2e kolom van Upper arm = Y-as humerus
-    euler_shoulder_deg(i,:) = computeEulerFromAxes(R_rel_UT, Yt, Xh, Yh, 'YXY');
+    euler_shoulder_deg(i,:) = computeEulerFromAxes(R_rel_UT, Yt, Xh, Yh);
 
     % ELBOW
     % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: Z-X-Y volgorde)
@@ -628,14 +628,14 @@ for i = 1:amount_frames
     Zh = RU(:,3);
     Xf = RF(:,1);
     Yf = RF(:,2);
-    euler_elbow_deg(i,:) = computeEulerFromAxes(R_rel_FU, Zh, Xf, Yf, 'ZXY');
+    euler_elbow_deg(i,:) = computeEulerFromAxes(R_rel_FU, Zh, Xf, Yf);
 
     % CORE
     % Euler-hoeken voor Core motion based on R_rel_TP (ISB: geen volgorde gegeven)
     Xp = RP(:,1);
     Yp = RP(:,2);
     Zp = RP(:,3);
-    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp, 'YXY'); 
+    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp); 
 
     % PELVIS
     % Euler-hoeken voor Pelvis motion within global frame based on
@@ -656,7 +656,7 @@ for i = 1:amount_frames
     Xtl = RTL(:,1);
     Ytl = RTL(:,2);
     Ztl = RTL(:,3);
-    euler_LKnee_deg(i,:) = computeEulerFromAxes(R_rel_STL, Xtl, Ytl, Ztl, 'YXY');
+    euler_LKnee_deg(i,:) = computeEulerFromAxes(R_rel_STL, Xtl, Ytl, Ztl);
 
 end
     
