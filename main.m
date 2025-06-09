@@ -848,3 +848,39 @@ fprintf('Foot contact op frame %d (t = %.3f s)\n', FC_index, FC_index/fs);
 % Bereken Ball Release (max‐snelheid na FC)
 [BR_index, BR_time] = computeBallRelease(filtered_data, FC_index, fs);
 fprintf('Ball release op frame %d (t = %.3f s)\n', BR_index, BR_time);
+
+% Voorbeeld: plot alleen U en F om de 10 frames
+figure;
+ax = gca;
+axis(ax, 'equal');
+xlabel(ax,'X (mm)'); ylabel(ax,'Y (mm)'); zlabel(ax,'Z (mm)');
+grid(ax,'on');
+view(ax, 3);
+title(ax,'Lokale assenstelsels Upper Arm (rood/groen/blauw) en Forearm (magenta/cyaan/zwart)');
+
+scale = 100;    % lengte in mm
+step  = 10;     % ieder 10e frame
+
+for i = 1:step:size(filtered_data,1)
+    % 1) Upper Arm: oorsprong = AR(i,:)
+    originU = [filtered_data.ARX(i), filtered_data.ARY(i), filtered_data.ARZ(i)];
+    RU      = squeeze(U(i,:,:));         % 3×3 matrix
+    % standaardkleuren voor U: rood/groen/blauw
+    colorsU = [1 0 0; 0 1 0; 0 0 1];
+
+    plotLocalFrame(originU, RU, scale, colorsU, ax);
+
+    % 2) Forearm: oorsprong = PMR(i,:)
+    originF = [filtered_data.PMRX(i), filtered_data.PMRY(i), filtered_data.PMRZ(i)];
+    RF      = squeeze(F(i,:,:));
+    % kleuren voor F: magenta/cyaan/zwart
+    colorsF = [1 0 1; 0 1 1; 0 0 0];
+
+    plotLocalFrame(originF, RF, scale, colorsF, ax);
+
+    pause(0.1)   % optioneel, om te zien hoe frames één voor één verschijnen
+end
+legend(ax, {
+    'U X-as','U Y-as','U Z-as', ...
+    'F X-as','F Y-as','F Z-as'
+});
