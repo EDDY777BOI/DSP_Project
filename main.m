@@ -34,6 +34,7 @@ end
 all_vars = data.Properties.VariableNames;             % get all the names of the columns
 markers = unique(regexprep(all_vars, '[XYZ]$', ''));  % unique marker labels
 
+
 %% Lokale assenstelsel RIGHT Forearm (F) – volgens ISB
 % Hebben de Y as van F nodig voor U, dus definieren eerst deze
 
@@ -60,18 +61,18 @@ for i = 1:amount_frames
 
     % Y-as: van PMR naar midden elleboog
     midpoint_elbow = 0.5 * (elbow_lat + elbow_med);
-    Y = normalize(midpoint_elbow - PLR(i, :));  % van pols (ISB:PMR, maar project description zegt gebruik PLR) naar elleboog
+    Y = (midpoint_elbow - PLR(i, :));  % van pols (ISB:PMR, maar project description zegt gebruik PLR) naar elleboog
 
     % X-as: loodrecht op vlak gevormd door PMR, PLR, midpoint_elbow
     v1 = PLR(i,:) - wrist_med;
     v2 = midpoint_elbow - wrist_med;
-    X = normalize(cross(v1,v2));  % kruisproduct van de 2 vlakken
+    X = (cross(v1,v2));  % kruisproduct van de 2 vlakken
 
     % Z-as: orthogonaal (kruisproduct) = voorwaartse rotatieas
-    Z = cross(X, Y);
+    Z = (cross(X, Y));
 
     % Her-orthogonaliseren voor zekerheid (optioneel)
-    %X = cross(Y, Z);  % herbereken X zodat alle 3 orthogonaal zijn
+    %X = cross(Z, Y);  % herbereken X zodat alle 3 orthogonaal zijn
 
     % Van de vectoren eenheidsvectoren maken
     X = Unity(X);
@@ -79,7 +80,9 @@ for i = 1:amount_frames
     Y = Unity(Y);
     % Attitude matrix (kolommen zijn assen)
     F(i, :, :) = [X; Y; Z]';
+   disp(det([X; Y; Z]'))
 end
+
 % Apply continuity-correction
 F = fixAttitudeContinuity(F);
 disp('Attitude matrix F (Forearm Right) aangemaakt.');
@@ -104,11 +107,11 @@ for i = 1:amount_frames
     midpoint_elbow = 0.5 * (elbow_lat + elbow_med);
     
     % Y-as: van midden elleboog naar schouder, richting schouder (AR)
-    Y = normalize(AR(i,:) - midpoint_elbow);  
+    Y = (AR(i,:) - midpoint_elbow);  
 
     % Z-as: lijn loodrecht op vlak gemaakt door Y-as en Y-as van Forearm,
     % naar rechts gericht
-    %Yf = normalize(midpoint_elbow - PLR(i, :)); % y as Forearm 
+    %Yf = (midpoint_elbow - PLR(i, :)); % y as Forearm 
     RF = squeeze(F(i, :, :));
     Yf = RF(:,2); % 2e kolom de Y as
     Z = cross(Y,Yf);
@@ -148,13 +151,13 @@ for i = 1:amount_frames
     midpoint_higher_T = 0.5 * (MS(i,:) + C7(i,:));
 
     % Y-as: van  midpoint_MS_C7 naar midpoint_PX_T8 naar boven gericht
-    Y = normalize(midpoint_higher_T - midpoint_lower_T); 
+    Y = (midpoint_higher_T - midpoint_lower_T); 
 
     % Z-as: loodrecht op vlak gevormd door MS, C7 en midpoint_lower_T naar
     % rechts gericht
     v1 = C7(i,:) - MS(i,:);
     v2 = midpoint_lower_T - MS(i,:);
-    Z = normalize(cross(v1,v2));  % kruisproduct van de 2 vlakken
+    Z = (cross(v1,v2));  % kruisproduct van de 2 vlakken
     
     % X-as: orthogonaal (kruisproduct) = voorwaartse rotatieas
     X = cross(Y, Z);
@@ -190,7 +193,7 @@ for i = 1:amount_frames
     midpoint_SIPS = 0.5 * (SIPSR(i,:) + SIPSL(i,:));
 
     % Z-as: tussen SIASR en SIASR, naar links gericht
-    Z = normalize(SIASL(i,:) - SIASR(i,:)); 
+    Z = (SIASL(i,:) - SIASR(i,:)); 
 
     % X-as: orthogonaal op Z en parallel met lijn in het vlak gevormd door SIASR en SIASL en
     % midpoint_SIPS
@@ -233,20 +236,20 @@ for i = 1:amount_frames
     origin = HL(i, :);
 
     % Y-as: lijn tussen midpunt CLL/CML en oorsprong, naar boven gericht
-    Y = normalize(origin - knee_mid);
+    Y = (origin - knee_mid);
 
     % Z-as: loodrecht op de y as, in het vlak gevormd door de oorsprong en
     % CML/CLL, naar links gericht
     v1 = CML(i,:) - origin;
     v2 = CLL(i,:) - origin;
     Z_temp = cross(v1, v2); % kruisproduct van de 2 vectoren, naar voor gericht
-    Z = cross(Z_temp, Y);
+    Z = cross(Y, Z_temp);
 
     % X-as: kruisproduct Y en Z, naar voor gericht (anterior)
-    X = cross(Y,Z);
+    X = cross(Z,Y);
 
     % Her-orthogonaliseren
-    Z = cross(Y, X);
+    %Z = cross(Y, X);
 
     % Eenheidsvectoren
     X = Unity(X);
@@ -276,7 +279,7 @@ for i = 1:amount_frames
     origin = 0.5 * (MLL(i,:)) + (MML(i,:));
 
     % Z-as: van mediale naar laterale malleolus naar links gericht
-    Z = normalize(MLL(i,:) - MML(i,:));
+    Z = (MLL(i,:) - MML(i,:));
  
     % X-as: loodrecht op torsionaal vlak van onderbeen (gevormd door
     % CML/CLL en MML/MLL
@@ -375,6 +378,7 @@ for i = 1:step:height(filtered_data)
     quiver3(origin(1), origin(2), origin(3), scale*Y(1), scale*Y(2), scale*Y(3), 'g', 'LineWidth', 1.5);
     quiver3(origin(1), origin(2), origin(3), scale*Z(1), scale*Z(2), scale*Z(3), 'b', 'LineWidth', 1.5);
 end
+legend('X-as (voorwaarts)', 'Y-as (proximaal)', 'Z-as (rechts)');
 
 %% %% Visualisatie van lokale assenstelsel Thorax (T)
 
@@ -689,7 +693,7 @@ ShoulderAngles = table(gammaS, betaS, alphaS,'VariableNames', {'PlaneOfElevation
 
 % Toon eerste paar waarden
 disp('Eerste 10 rijen van de schouderhoeken (Euler/Cardan):');
-disp(ShoulderAngles(1:100,:));
+disp(ShoulderAngles(1:558,:));
 
 % ELBOW
 gammaE = euler_elbow_deg_unwrapped(:,1);
