@@ -1,11 +1,11 @@
-function angles_unwrapped_deg = unwrapEulerAngles(angles_deg)
-% Unwrapt een Nx3 matrix met Euler-hoeken (in graden)
-% Zet om naar radialen (dit moet voor de unwrap functie)
-angles_rad = deg2rad(angles_deg);
-
-% Pas unwrap toe 
-angles_unwrapped_rad = unwrap(angles_rad);
-
-% Zet terug naar graden
-angles_unwrapped_deg = rad2deg(angles_unwrapped_rad);
+function angles_unwrapped  = unwrapEulerAngles(angles_deg)
+% Unwrap an Nx3 matrix of Euler-angles (in degrees)
+    angles_rad = deg2rad(angles_deg);
+    [N, nAngles] = size(angles_rad);
+    angles_unwrapped_rad = zeros(N, nAngles);
+    for i = 1:nAngles
+        angles_unwrapped_rad(:, i) = unwrap(angles_rad(:, i));
+    end
+    % Convert back to degrees.
+    angles_unwrapped = rad2deg(angles_unwrapped_rad);
 end
