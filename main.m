@@ -639,7 +639,7 @@ for i = 1:amount_frames
     Xp = RP(:,1);
     Yp = RP(:,2);
     Zp = RP(:,3);
-    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp); 
+    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_TP, Xp, Yp, Zp); 
 
     % PELVIS
     % Euler-hoeken voor Pelvis motion within global frame based on
@@ -648,7 +648,12 @@ for i = 1:amount_frames
     % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
     euler_pelvis_rad = rotm2eul(RP, 'XYZ');
     euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
+    Xp = RP(:,1);
+    Yp = RP(:,2);
+    Zp = RP(:,3);
+    euler_pelvis_deg(i,:) = computeEulerFromAxes(R_rel_TP, Xp, Yp, Zp); 
 
+    % THORAX
     % Euler-hoeken voor Thorax motion within global frame based on
     % att_mat_T (ISB: ... volgorde)
     % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
@@ -656,6 +661,7 @@ for i = 1:amount_frames
     euler_thorax_rad = rotm2eul(RT, 'XYZ');
     euler_thorax_deg(i,:) = rad2deg(euler_thorax_rad);
 
+    % LEFT KNEE
     % Euler-hoeken voor Left Knee motion based on R_rel_STL (ISB: ... volgorde)
     Xtl = RTL(:,1);
     Ytl = RTL(:,2);
@@ -699,7 +705,7 @@ disp(ShoulderAngles(1:558,:));
 gammaE = euler_elbow_deg_unwrapped(:,1);
 betaE  = euler_elbow_deg_unwrapped(:,2);
 alphaE = euler_elbow_deg_unwrapped(:,3);
-ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_deg','Carrying_angle_deg','AxialRotation_deg'});
+ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'AxialRotation_deg','Carrying_angle_deg','Flexion/Extension_deg'});
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
 disp(ElbowAngles(1:10,:));
 
@@ -707,7 +713,7 @@ disp(ElbowAngles(1:10,:));
 gammaC = euler_core_deg_unwrapped(:,1);
 betaC  = euler_core_deg_unwrapped(:,2);
 alphaC = euler_core_deg_unwrapped(:,3);
-CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'X','Y','Z'});
+CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'LateralFlexion_deg','Extension_deg','AxialRotation_deg'});
 disp('Eerste 10 rijen van de corehoeken (Euler/Cardan):');
 disp(CoreAngles(1:10,:));
 
