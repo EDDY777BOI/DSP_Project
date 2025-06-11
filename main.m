@@ -825,49 +825,49 @@ fc_frame  = window(idx);               % map de relatieve idx naar je échte fra
 fc = 10;          % cutoff in Hz
 [b,a] = butter(2, fc/(fs/2));
 % filtration of the shoulder angles:
-Bodypart = S % configure the bodypart (S = shoulder, E = elbow, P = pelvic, T = thorax, C = core, LK = left knee) 
+Bodypart = 'S' % configure the bodypart (S = shoulder, E = elbow, P = pelvic, T = thorax, C = core, LK = left knee) 
 
-if Bodypart == S
+if Bodypart == 'S'
     gamma = gammaS;
     beta = betaS;
     alpha = alphaS;
-elseif  Bodypart == T
+elseif  Bodypart == 'T'
     gamma = gammaT;
     beta = betaT;
     alpha = alphaT;
-elseif Bodypart == E
+elseif Bodypart == 'E'
     gamma = gammaE;
     beta = betaE;
     alpha = alphaE;
-elseif  Bodypart == P
+elseif  Bodypart == 'P'
     gamma = gammaP;
     beta = betaP;
     alpha = alphaP;
-elseif Bodypart == LK
-    gamma = gammaLK
-    beta = betaLK
-    alpha = alphaLK
-elseif  Bodypart == C
-    gamma = gammaC
-    beta = betaC
-    alpha = alphaC
-end if
+elseif Bodypart == 'LK'
+    gamma = gammaLK;
+    beta = betaLK;
+    alpha = alphaLK;
+elseif  Bodypart == 'C'
+    gamma = gammaC;
+    beta = betaC;
+    alpha = alphaC;
+end
 
-gammaS_f = filtfilt(b, a, gammaS);
-betaS_f  = filtfilt(b, a, betaS);
-alphaS_f = filtfilt(b, a, alphaS);
+gamma_f = filtfilt(b, a, gamma);
+beta_f  = filtfilt(b, a, beta);
+alpha_f = filtfilt(b, a, alpha);
 % we calculate the angular velocities by derivating the angles (here
 % shoulder with respect to the thorax)
-Dgamma = gradient(gammaS_f, dt);
-Dbeta  = gradient(betaS_f,  dt);
-Dalpha = gradient(alphaS_f, dt);
+Dgamma = gradient(gamma_f, dt);
+Dbeta  = gradient(beta_f,  dt);
+Dalpha = gradient(alpha_f, dt);
 
 % Filtration before accel­eration calculation
 Dgamma_f = filtfilt(b,a, Dgamma);
 Dbeta_f  = filtfilt(b,a, Dbeta);
 Dalpha_f = filtfilt(b,a, Dalpha);
     
-%% 2. RotationAcceleration function (°/s²) ---
+%% 2. RotationAcceleration function (°/s²) 
 % Here we calculate the rotational acceleration by calculating the second
 % derrivative of the angles
 D2gamma = gradient(Dgamma_f, dt);
@@ -881,17 +881,14 @@ D2alpha_f = filtfilt(b,a, D2alpha);
 
 %% 4. CRP Methode 1: Hoek-Snelheid Methode
 % % Normaliseren van hoeken en snelheden:
-% % manier 1: (+-1)
-% shoulder_norm = (angles_shoulder - min(angles_shoulder)) / (max(angles_shoulder) - min(angles_shoulder)) * 2 - 1;
-% elbow_norm = (angles_elbow - min(angles_elbow)) / (max(angles_elbow) - min(angles_elbow)) * 2 - 1;
-% vel_shoulder_norm = (vel_shoulder - min(vel_shoulder)) / (max(vel_shoulder) - min(vel_shoulder)) * 2 - 1;
-% vel_elbow_norm = (vel_elbow - min(vel_elbow)) / (max(vel_elbow) - min(vel_elbow)) * 2 - 1;
-% 
-% % manier 2: z-score
-% shoulder_norm = (angles_shoulder - mean(angles_shoulder)) / std(angles_shoulder);
-% elbow_norm = (angles_elbow - mean(angles_elbow)) / std(angles_elbow);
-% vel_shoulder_norm = (vel_shoulder - mean(vel_shoulder)) / std(vel_shoulder);
-% vel_elbow_norm = (vel_elbow - mean(vel_elbow)) / std(vel_elbow);
+plotPhasePlane(gamma_f, Dgamma_f, 'minmax');
+% or
+plotPhasePlane(gamma_f, Dgamma_f, 'zscore');
+
+%Interpretation
+%A perfect sinusoid gives you an ellipse centered at (0,0).
+%Non-sinusoidal or asymmetric movements distort that ellipse in intuitive ways (e.g. faster on the upswing than downswing).
+
 % 
 % % - Bereken fasehoeken en CRP
 % phase_angle_shoulder = atan2(vel_shoulder_norm, shoulder_norm);  % in radialen
