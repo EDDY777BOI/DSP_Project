@@ -30,6 +30,11 @@ for i = 1:width(data)
     filtered_data{:, i} = filtfilt(b, a, column);
 end
 
+
+% app.FilteredData = loadAndFilterTSV('10Ax1.tsv', 10, 300);
+
+
+
 % Finding marker names
 all_vars = data.Properties.VariableNames;             % get all the names of the columns
 markers = unique(regexprep(all_vars, '[XYZ]$', ''));  % unique marker labels
@@ -774,6 +779,55 @@ ylabel('Elevation (deg)');
 title('Shoulder Euler Elevation Angle versus Time');
 grid on;
 
+%% Ball Release
+PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];
+fs = 300;                 % Sampling frequency in Hz
+dt = 1 / fs;              % Time step
+N = size(PLR, 1);         % Number of frames
+t = (0:N-1) * dt;         % Time vector in seconds
+FC_index = 427;
+
+vel = gradient(PLR, dt);
+acc = gradient(vel, dt);
+
+speed = vecnorm(vel, 2, 2);  % Euclidean norm per row
+
+post_FC_speed = speed(FC_index:end);
+[~, idx_max_speed] = max(post_FC_speed);
+
+BR_index = FC_index - 1 + idx_max_speed;
+BR_time = t(BR_index);
+
+figure;
+subplot(3,1,1); plot(t, PLR); title('PLR Position'); legend('X','Y','Z');
+subplot(3,1,2); plot(t, vel); title('PLR Velocity'); legend('Vx','Vy','Vz');
+subplot(3,1,3); plot(t, speed); title('PLR Speed');
+hold on; plot(BR_time, speed(BR_index), 'ro'); legend('Speed', 'Ball Release');
+
+figure;
+plot3(PLR(:,1), PLR(:,2), PLR(:,3), 'b-'); hold on;
+plot3(PLR(BR_index,1), PLR(BR_index,2), PLR(BR_index,3), 'ro', 'MarkerSize', 8, 'LineWidth', 2);
+title('3D Trajectory of PLR'); xlabel('X'); ylabel('Y'); zlabel('Z'); grid on;
+legend('Trajectory', 'Ball Release');
+
+%% FOOT CONTACT LEFT LEG (FC)
+% 1) Gemiddelde X-positie van malleoli
+MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];
+MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];
+x_mal = 0.5*(MLL(:,1) + MML(:,1));    % gemiddelde X-positie
+
+% 2) Snelheid en versnelling  
+vel_mal = [0; diff(x_mal)/dt];        % mm/s
+acc_mal = [0; diff(vel_mal)/dt];      % mm/s^2
+% negatieve waardes betekenen dat de voet in de negatieve X-richting
+% beweegt, dus dat die terug gaat
+
+% % 3) Zoek foot contact
+window = 410:470;
+[~, idx]  = max(abs(acc_mal(window))); % '~' = de waarde slaan we over, 'idx' is pos. binnen window
+fc_frame  = window(idx);               % map de relatieve idx naar je échte frame
+
+
 %%
 % ======================================
 % 3D KINEMATICA – PERSOON 3 TEMPLATE
@@ -844,3 +898,62 @@ grid on;
 % % - Opslaan van CRP-resultaten en afgeleiden
 % 
 % % save('output_persoon3.mat', ...)
+
+
+%% MICHAIL
+filtered_data = loadAndFilterTSV('10Ax1.tsv', 10, 300);
+fs = 300;           % samplefrequentie in Hz
+[F, U, T, P, TL, SL] = computeLocalFrames(filtered_data);
+[R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL] = computeRelativeRotations(U, F, T, P, TL, SL);
+[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F);
+% (optioneel: toon eerste paar regels in Command Window)
+disp('Eerste 5 rijen Schouderhoeken (deg):');
+disp(Euler_shoulder(1:5,:));
+disp('Eerste 5 rijen Ellebooghoeken (deg):');
+disp(Euler_elbow(1:5,:));
+
+% Bereken Foot Contact (Left Leg)
+window_FC = 410 : 470;  % voorbeeld‐range; pas aan na onderzoek van je data
+FC_index = computeFootContactLeftLeg(filtered_data, window_FC, fs);
+fprintf('Foot contact op frame %d (t = %.3f s)\n', FC_index, FC_index/fs);
+
+
+% Bereken Ball Release (max‐snelheid na FC)
+[BR_index, BR_time] = computeBallRelease(filtered_data, FC_index, fs);
+fprintf('Ball release op frame %d (t = %.3f s)\n', BR_index, BR_time);
+
+% Voorbeeld: plot alleen U en F om de 10 frames
+figure;
+ax = gca;
+axis(ax, 'equal');
+xlabel(ax,'X (mm)'); ylabel(ax,'Y (mm)'); zlabel(ax,'Z (mm)');
+grid(ax,'on');
+view(ax, 3);
+title(ax,'Lokale assenstelsels Upper Arm (rood/groen/blauw) en Forearm (magenta/cyaan/zwart)');
+
+scale = 100;    % lengte in mm
+step  = 10;     % ieder 10e frame
+
+for i = 1:step:size(filtered_data,1)
+    % 1) Upper Arm: oorsprong = AR(i,:)
+    originU = [filtered_data.ARX(i), filtered_data.ARY(i), filtered_data.ARZ(i)];
+    RU      = squeeze(U(i,:,:));         % 3×3 matrix
+    % standaardkleuren voor U: rood/groen/blauw
+    colorsU = [1 0 0; 0 1 0; 0 0 1];
+
+    plotLocalFrame(originU, RU, scale, colorsU, ax);
+
+    % 2) Forearm: oorsprong = PMR(i,:)
+    originF = [filtered_data.PMRX(i), filtered_data.PMRY(i), filtered_data.PMRZ(i)];
+    RF      = squeeze(F(i,:,:));
+    % kleuren voor F: magenta/cyaan/zwart
+    colorsF = [1 0 1; 0 1 1; 0 0 0];
+
+    plotLocalFrame(originF, RF, scale, colorsF, ax);
+
+    pause(0.1)   % optioneel, om te zien hoe frames één voor één verschijnen
+end
+legend(ax, {
+    'U X-as','U Y-as','U Z-as', ...
+    'F X-as','F Y-as','F Z-as'
+});
