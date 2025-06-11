@@ -701,13 +701,32 @@ ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_d
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
 disp(ElbowAngles(1:100,:));
 
+
+
+%% FOOT CONTACT LEFT LEG (FC)
+% 1) Gemiddelde X-positie van malleoli
+MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];
+MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];
+x_mal = 0.5*(MLL(:,1) + MML(:,1));    % gemiddelde X-positie
+
+% 2) Snelheid en versnelling  
+vel_mal = [0; diff(x_mal)/dt];        % mm/s
+acc_mal = [0; diff(vel_mal)/dt];      % mm/s^2
+% negatieve waardes betekenen dat de voet in de negatieve X-richting
+% beweegt, dus dat die terug gaat
+
+% % 3) Zoek foot contact
+window = 410:470;
+[~, idx]  = max(abs(acc_mal(window))); % '~' = de waarde slaan we over, 'idx' is pos. binnen window
+fc_frame  = window(idx);               % map de relatieve idx naar je échte frame
+
 %% Ball Release
 PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];
 fs = 300;                 % Sampling frequency in Hz
 dt = 1 / fs;              % Time step
 N = size(PLR, 1);         % Number of frames
 t = (0:N-1) * dt;         % Time vector in seconds
-FC_index = 427;
+FC_index = fc_frame;
 
 vel = gradient(PLR, dt);
 acc = gradient(vel, dt);
@@ -732,23 +751,22 @@ plot3(PLR(BR_index,1), PLR(BR_index,2), PLR(BR_index,3), 'ro', 'MarkerSize', 8, 
 title('3D Trajectory of PLR'); xlabel('X'); ylabel('Y'); zlabel('Z'); grid on;
 legend('Trajectory', 'Ball Release');
 
-%% FOOT CONTACT LEFT LEG (FC)
-% 1) Gemiddelde X-positie van malleoli
-MLL = [filtered_data.MLLX, filtered_data.MLLY, filtered_data.MLLZ];
-MML = [filtered_data.MMLX, filtered_data.MMLY, filtered_data.MMLZ];
-x_mal = 0.5*(MLL(:,1) + MML(:,1));    % gemiddelde X-positie
+%% MAXIMAL EXTERNAL ROTATION OF THE RIGHT SHOULDER (MER)
 
-% 2) Snelheid en versnelling  
-vel_mal = [0; diff(x_mal)/dt];        % mm/s
-acc_mal = [0; diff(vel_mal)/dt];      % mm/s^2
-% negatieve waardes betekenen dat de voet in de negatieve X-richting
-% beweegt, dus dat die terug gaat
+axial_rotation_shoulder_post_fc = alphaS(fc_frame:end);
 
-% % 3) Zoek foot contact
-window = 410:470;
-[~, idx]  = max(abs(acc_mal(window))); % '~' = de waarde slaan we over, 'idx' is pos. binnen window
-fc_frame  = window(idx);               % map de relatieve idx naar je échte frame
+[max_er_value, local_idx_mer] = max(axial_rotation_shoulder_post_fc);
 
+MER_index = fc_frame - 1 + local_idx_mer;
+
+MER_time = t(MER_index);
+
+fprintf('------------------------------------------------------------\n');
+fprintf('MAXIMAL EXTERNAL ROTATION OF THE RIGHT SHOULDER (MER):\n');
+fprintf('  Global Frame Index for MER: %d\n', MER_index);
+fprintf('  Time of MER: %.3f s (relative to start of trial)\n', MER_time);
+fprintf('  Maximum External Rotation Angle: %.2f degrees\n', max_er_value);
+fprintf('------------------------------------------------------------\n');
 
 %%
 % ======================================
