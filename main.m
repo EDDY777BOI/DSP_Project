@@ -645,19 +645,15 @@ for i = 1:amount_frames
     % Euler-hoeken voor Pelvis motion within global frame based on
     % att_mat_P (ISB: ... volgorde)
     % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
-    % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
+    % globale coordinatensysteem kijken, we nemen  XYZ volgorde
     euler_pelvis_rad = rotm2eul(RP, 'XYZ');
     euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
-    Xp = RP(:,1);
-    Yp = RP(:,2);
-    Zp = RP(:,3);
-    euler_pelvis_deg(i,:) = computeEulerFromAxes(R_rel_TP, Xp, Yp, Zp); 
-
+    
     % THORAX
     % Euler-hoeken voor Thorax motion within global frame based on
     % att_mat_T (ISB: ... volgorde)
     % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
-    % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
+    % globale coordinatensysteem kijken, we nemen  XYZ volgorde
     euler_thorax_rad = rotm2eul(RT, 'XYZ');
     euler_thorax_deg(i,:) = rad2deg(euler_thorax_rad);
 
