@@ -364,7 +364,7 @@ title('Lokale assenstelsels Forearm Right (F) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -396,7 +396,7 @@ title('Lokale assenstelsels Thorax (T) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -427,7 +427,7 @@ title('Lokale assenstelsels Pelvic (P) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -459,7 +459,7 @@ title('Lokale assenstelsels Left Thigh (TL) over tijd');
 view(3);
 
 % Om de 10 frames visualiseren
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -492,7 +492,7 @@ title('Lokale assenstelsels Left Shank (SL) over tijd');
 view(3);
 
 % Om de 10 frames visualiseren
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -525,7 +525,7 @@ title('Gecombineerde lokale assenstelsels');
 view(3);
 
 scale = 100;   % lengte van de assen
-step = 10;
+step = 5;
 
 for i = 1:step:amount_frames
     % Upper Arm (U)
@@ -561,7 +561,7 @@ title('Pelvis (P) & Left Thigh (TL) – Gecombineerde visualisatie');
 view(3);
 
 scale = 100;   % lengte van de assen
-step = 10;
+step = 5;
 
 for i = 1:step:amount_frames
     % Origin = HL (heup links)
@@ -709,7 +709,7 @@ betaE  = euler_elbow_deg_unwrapped(:,2);
 alphaE = euler_elbow_deg_unwrapped(:,3);
 ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'AxialRotation_deg','Carrying_angle_deg','Flexion/Extension_deg'});
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
-disp(ElbowAngles(1:10,:));
+disp(ElbowAngles(1:558,:));
 
 % CORE
 gammaC = euler_core_deg_unwrapped(:,1);
@@ -717,7 +717,7 @@ betaC  = euler_core_deg_unwrapped(:,2);
 alphaC = euler_core_deg_unwrapped(:,3);
 CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'LateralFlexion_deg','Extension_deg','AxialRotation_deg'});
 disp('Eerste 10 rijen van de corehoeken (Euler/Cardan):');
-disp(CoreAngles(1:10,:));
+disp(CoreAngles(1:558,:));
 
 % PELVIS
 gammaP = euler_pelvis_deg_unwrapped(:,1);
@@ -725,7 +725,7 @@ betaP  = euler_pelvis_deg_unwrapped(:,2);
 alphaP = euler_pelvis_deg_unwrapped(:,3);
 PelvisAngles = table(gammaP, betaP, alphaP,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de pelvishoeken (Euler/Cardan):');
-disp(PelvisAngles(1:10,:));
+disp(PelvisAngles(1:558,:));
 
 % THORAX
 gammaT = euler_thorax_deg_unwrapped(:,1);
@@ -733,7 +733,7 @@ betaT  = euler_thorax_deg_unwrapped(:,2);
 alphaT = euler_thorax_deg_unwrapped(:,3);
 ThoraxAngles = table(gammaT, betaT, alphaT,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de thoraxhoeken (Euler/Cardan):');
-disp(ThoraxAngles(1:10,:));
+disp(ThoraxAngles(1:558,:));
 
 % LEFT KNEE
 gammaLK = euler_LKnee_deg_unwrapped(:,1);
@@ -741,43 +741,14 @@ betaLK  = euler_LKnee_deg_unwrapped(:,2);
 alphaLK = euler_LKnee_deg_unwrapped(:,3);
 LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de leftkne2ehoeken (Euler/Cardan):');
-disp(LeftKneeAngles(1:10,:));
+disp(LeftKneeAngles(1:558,:));
 %% Plot euler angles to check if they are correct
-figure;
-subplot(3,1,1); plot(t, gammaS); title('Plane of Elevation'); ylabel('deg');
-subplot(3,1,2); plot(t, betaS); title('Elevation'); ylabel('deg');
-subplot(3,1,3); plot(t, alphaS); title('Axial Rotation'); xlabel('tijd (s)'); ylabel('deg');
-
-%%
-% Example: plot R_rel_UT(2,2) versus Euler elevation angle (beta)
-R22 = zeros(amount_frames,1);    % Preallocate vector
-
-for i = 1:amount_frames
-    % Extract element (2,2) from R_rel_UT for each frame.
-    % If R_rel_UT is not explicitly stored over time, you can compute it again,
-    % or store it in your loop.
-    RU = squeeze(U(i,:,:));        
-    RT = squeeze(T(i,:,:));        
-    R_rel_UT = RT.' * RU;           % Upper arm relative to Thorax
-    R22(i) = R_rel_UT(2,2);
-end
-
-% Create a figure with two subplots side by side.
-figure;
-subplot(2,1,1);
-plot(t, R22, 'LineWidth', 1.5);
-xlabel('Time (s)');
-ylabel('R_{22}');
-title('Rotation Matrix Element R_{22} versus Time');
-grid on;
-
-subplot(2,1,2);
-% In this example, euler_shoulder_deg_unwrapped(:,2) represents the "elevation" angle.
-plot(t, euler_shoulder_deg_unwrapped(:,2), 'r', 'LineWidth', 1.5);
-xlabel('Time (s)');
-ylabel('Elevation (deg)');
-title('Shoulder Euler Elevation Angle versus Time');
-grid on;
+plotEulerMotion('shoulder', euler_shoulder_deg_unwrapped);
+plotEulerMotion('elbow', euler_elbow_deg_unwrapped);
+plotEulerMotion('core', euler_core_deg_unwrapped);
+plotEulerMotion('pelvis', euler_pelvis_deg_unwrapped);
+plotEulerMotion('thorax', euler_thorax_deg_unwrapped);
+plotEulerMotion('knee', euler_LKnee_deg_unwrapped);
 
 %% Ball Release
 PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];
