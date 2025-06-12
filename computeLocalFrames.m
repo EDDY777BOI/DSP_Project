@@ -47,17 +47,17 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     % 1) Forearm Right (F)
     % Y = PLR to mid elbow
     midpoint_elbow = 0.5*(ELR(i,:)+EMR(i,:));
-    Yf = normalize(midpoint_elbow - PLR(i,:));
+    Yf = (midpoint_elbow - PLR(i,:));
     % X = perpendicular to plane PLR-PMR center
     v1 = PLR(i,:) - PMR(i,:);
     v2 = midpoint_elbow - PMR(i,:);
-    Xf = normalize(cross(v1,v2));
+    Xf = (cross(v1,v2));
     Zf = cross(Xf, Yf);
     F(i,:,:) = [ Unity(Xf); Unity(Yf); Unity(Zf) ]';
 
     % 2) Upper Arm Right (U)
     midpoint_elbow = 0.5*(ELR(i,:)+EMR(i,:));
-    Yu = normalize(AR(i,:) - midpoint_elbow);
+    Yu = (AR(i,:) - midpoint_elbow);
     % Y-axis Forearm
     Yf = squeeze(F(i,:,2));  
     Zu = cross(Yu, Yf);
@@ -67,16 +67,16 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     % 3) Thorax (T)
     lower = 0.5*(PX(i,:)+T7(i,:));
     upper = 0.5*(MS(i,:)+C7(i,:));
-    Yt = normalize(upper - lower);
+    Yt = (upper - lower);
     v1 = C7(i,:) - MS(i,:);
     v2 = lower  - MS(i,:);
-    Zt = normalize(cross(v1,v2));
+    Zt = (cross(v1,v2));
     Xt = cross(Yt,Zt);
     T(i,:,:) = [ Unity(Xt); Unity(Yt); Unity(Zt) ]';
 
     % 4) Pelvis (P)
     midsips = 0.5*(SIPSR(i,:)+SIPSL(i,:));
-    Zp = normalize(SIASL(i,:) - SIASR(i,:));
+    Zp = (SIASL(i,:) - SIASR(i,:));
     plane = cross(midsips - SIASL(i,:), SIASR(i,:) - SIASL(i,:));
     Xp = cross(Zp, plane);
     Yp = cross(Xp, Zp);
@@ -84,15 +84,15 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
 
     % 5) Left Thigh (TL)
     knee_mid = 0.5*(CLL(i,:)+CML(i,:));
-    Ytl = normalize(HL(i,:) - knee_mid);
+    Ytl = (HL(i,:) - knee_mid);
     tempZ = cross(CML(i,:) - HL(i,:), CLL(i,:) - HL(i,:));
-    Ztl   = cross(tempZ, Ytl);
-    Xtl   = cross(Ytl, Ztl);
+    Ztl   = cross(Ytl, tempZ);
+    Xtl   = cross(Ztl, Ytl);
     TL(i,:,:) = [ Unity(Xtl); Unity(Ytl); Unity(Ztl) ]';
 
     % 6) Left Shank (SL)
     origin  = 0.5*(MLL(i,:)+MML(i,:));
-    Zsl     = normalize(MLL(i,:) - MML(i,:));
+    Zsl     = (MLL(i,:) - MML(i,:));
     v1 = CLL(i,:) - MML(i,:);
     v2 = CML(i,:) - MLL(i,:);
     Xsl = cross(v1,v2);
@@ -100,6 +100,11 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Xsl = cross(Ysl, Zsl);
     SL(i,:,:) = [ Unity(Xsl); Unity(Ysl); Unity(Zsl) ]';
   end
-
+F = fixAttitudeContinuity(F);
+U = fixAttitudeContinuity(U);
+T = fixAttitudeContinuity(T);
+P = fixAttitudeContinuity(P);
+TL = fixAttitudeContinuity(TL);
+SL = fixAttitudeContinuity(SL);
 end
 

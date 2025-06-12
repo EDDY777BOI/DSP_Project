@@ -654,10 +654,6 @@ for i = 1:amount_frames
     euler_pelvis_rad = rotm2eul(RP, 'XYZ');
     euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 29a6dbb2578aad9f7543043b36c317f040a8701e
     % THORAX
     % Euler-hoeken voor Thorax motion within global frame based on
     % att_mat_T (ISB: ... volgorde)
@@ -885,10 +881,11 @@ fc_frame  = window(idx);               % map de relatieve idx naar je échte fra
 
 %% MICHAIL
 filtered_data = loadAndFilterTSV('10Ax1.tsv', 10, 300);
+amount_frames = height(filtered_data);
 fs = 300;           % samplefrequentie in Hz
 [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data);
 [R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL] = computeRelativeRotations(U, F, T, P, TL, SL);
-[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee, Euler_thorax] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F);
+[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee, Euler_thorax] = computeEulerAngles(amount_frames, U, T, P, TL, SL, F);
 % (optioneel: toon eerste paar regels in Command Window)
 disp('Eerste 5 rijen Schouderhoeken (deg):');
 disp(Euler_shoulder(1:5,:));
