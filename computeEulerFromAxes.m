@@ -10,13 +10,10 @@ function euler_angles_deg = computeEulerFromAxes(R, axis1, axis2, axis3)
     % Normaliseer assen
     % Begin met normaliseren
     axis1 = axis1 / norm(axis1);
-
     axis2 = axis2 - dot(axis2, axis1) * axis1;
     axis2 = axis2 / norm(axis2);
-
     axis3 = cross(axis1, axis2);
     axis3 = axis3 / norm(axis3);
-
     axis2 = cross(axis3, axis1);  % Nu zijn alle assen orthonormaal (nodig voor rotm2eul)
     
     % Bepaal transformatie naar basis XYZ met jouw assen als kolommen
