@@ -1,0 +1,74 @@
+<deployment-project plugin="plugin.apptool" plugin-version="1.0">
+  <configuration build-checksum="4023162909" file="C:\Users\sam-r\Documents\UA TI\DSP\GUI.prj" location="C:\Users\sam-r\Documents\UA TI\DSP" name="GUI" target="target.mlapps" target-name="Package App">
+    <param.appname>GUI</param.appname>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
+    <param.icon />
+    <param.icons />
+    <param.summary />
+    <param.description />
+    <param.screenshot>C:\Users\sam-r\AppData\Local\Temp\tpe6ec2760_0c55_463e_bab7_02684c7bb5cb.png</param.screenshot>
+    <param.version>1.0</param.version>
+    <param.products.name />
+    <param.products.id />
+    <param.products.version />
+    <param.platforms />
+    <param.output>C:\Users\sam-r\Documents\UA TI</param.output>
+    <param.guid>6f421a91-26dd-4ceb-9a2c-42ce7ea82bb1</param.guid>
+    <unset>
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.icon />
+      <param.icons />
+      <param.summary />
+      <param.description />
+      <param.version />
+      <param.products.name />
+      <param.products.id />
+      <param.products.version />
+      <param.platforms />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}\GUI.mlapp</file>
+    </fileset.main>
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}\computeBallRelease.m</file>
+      <file>${PROJECT_ROOT}\computeEulerAngles.m</file>
+      <file>${PROJECT_ROOT}\computeEulerFromAxes.m</file>
+      <file>${PROJECT_ROOT}\computeFootContactLeftLeg.m</file>
+      <file>${PROJECT_ROOT}\computeLocalFrames.m</file>
+      <file>${PROJECT_ROOT}\computeRelativeRotations.m</file>
+      <file>${PROJECT_ROOT}\fixAttitudeContinuity.m</file>
+      <file>${PROJECT_ROOT}\loadAndFilterTSV.m</file>
+      <file>${PROJECT_ROOT}\Unity.m</file>
+      <file>${PROJECT_ROOT}\unwrapEulerAngles.m</file>
+    </fileset.depfun>
+    <fileset.resources />
+    <fileset.package />
+    <build-deliverables>
+      <file location="C:\Users\sam-r\Documents" name="UA TI" optional="false">C:\Users\sam-r\Documents\UA TI</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2024a</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>10.0</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
