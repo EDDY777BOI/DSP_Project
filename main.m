@@ -742,6 +742,14 @@ alphaLK = euler_LKnee_deg_unwrapped(:,3);
 LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de leftkne2ehoeken (Euler/Cardan):');
 disp(LeftKneeAngles(1:10,:));
+
+%% Plot attitude matrix evolution for debug
+plotAttitudeMatrixEvolution(U, 'Upper Arm');
+plotAttitudeMatrixEvolution(F, 'Forearm');
+plotAttitudeMatrixEvolution(T, 'Thorax');
+plotAttitudeMatrixEvolution(P, 'Pelvis');
+plotAttitudeMatrixEvolution(SL, 'ShankLeft');
+plotAttitudeMatrixEvolution(TL, 'ThighLeft');
 %% Plot euler angles to check if they are correct
 plotEulerMotion('shoulder', euler_shoulder_deg_unwrapped);
 plotEulerMotion('elbow', euler_elbow_deg_unwrapped);
@@ -752,11 +760,12 @@ plotEulerMotion('knee', euler_LKnee_deg_unwrapped);
 
 %% Plot euler angles but with Michail names
 plotEulerMotion('shoulder', Euler_shoulder);
-plotEulerMotion('elbow', Euler_elbow);
+plotEulerMotion('elbow', Euler_elbow); 
 plotEulerMotion('core', Euler_core);
 plotEulerMotion('pelvis', Euler_pelvis);
 plotEulerMotion('thorax', Euler_thorax);
 plotEulerMotion('knee', Euler_knee);
+
 
 %% Ball Release
 PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];

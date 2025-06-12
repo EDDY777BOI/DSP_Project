@@ -54,6 +54,10 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Xf = (cross(v1,v2));
     Zf = cross(Xf, Yf);
     F(i,:,:) = [ Unity(Xf); Unity(Yf); Unity(Zf) ]';
+    % Check norm of every axis, make sure we dont have zero vectors
+    if norm(Xf) < 1e-3 || norm(Yf) < 1e-3 || norm(Zf) < 1e-3
+        warning("Frame %d: nearly collinear forearm axes", i);
+    end
 
     % 2) Upper Arm Right (U)
     midpoint_elbow = 0.5*(ELR(i,:)+EMR(i,:));
@@ -63,7 +67,9 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Zu = cross(Yu, Yf);
     Xu = cross(Yu, Zu);
     U(i,:,:) = [ Unity(Xu); Unity(Yu); Unity(Zu) ]';
-
+    if norm(Xu) < 1e-3 || norm(Yu) < 1e-3 || norm(Zu) < 1e-3
+        warning("Frame %d: nearly collinear forearm axes", i);
+    end
     % 3) Thorax (T)
     lower = 0.5*(PX(i,:)+T7(i,:));
     upper = 0.5*(MS(i,:)+C7(i,:));
@@ -73,7 +79,9 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Zt = (cross(v1,v2));
     Xt = cross(Yt,Zt);
     T(i,:,:) = [ Unity(Xt); Unity(Yt); Unity(Zt) ]';
-
+    if norm(Xt) < 1e-3 || norm(Yt) < 1e-3 || norm(Zt) < 1e-3
+        warning("Frame %d: nearly collinear forearm axes", i);
+    end
     % 4) Pelvis (P)
     midsips = 0.5*(SIPSR(i,:)+SIPSL(i,:));
     Zp = (SIASL(i,:) - SIASR(i,:));
@@ -81,7 +89,9 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Xp = cross(Zp, plane);
     Yp = cross(Xp, Zp);
     P(i,:,:) = [ Unity(Xp); Unity(Yp); Unity(Zp) ]';
-
+    if norm(Xp) < 1e-3 || norm(Yp) < 1e-3 || norm(Zp) < 1e-3
+        warning("Frame %d: nearly collinear forearm axes", i);
+    end
     % 5) Left Thigh (TL)
     knee_mid = 0.5*(CLL(i,:)+CML(i,:));
     Ytl = (HL(i,:) - knee_mid);
@@ -89,7 +99,9 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Ztl   = cross(Ytl, tempZ);
     Xtl   = cross(Ztl, Ytl);
     TL(i,:,:) = [ Unity(Xtl); Unity(Ytl); Unity(Ztl) ]';
-
+    if norm(Xtl) < 1e-3 || norm(Ytl) < 1e-3 || norm(Ztl) < 1e-3
+        warning("Frame %d: nearly collinear forearm axes", i);
+    end
     % 6) Left Shank (SL)
     origin  = 0.5*(MLL(i,:)+MML(i,:));
     Zsl     = (MLL(i,:) - MML(i,:));
@@ -99,7 +111,24 @@ function [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data)
     Ysl = cross(Xsl, Zsl);
     Xsl = cross(Ysl, Zsl);
     SL(i,:,:) = [ Unity(Xsl); Unity(Ysl); Unity(Zsl) ]';
+    if norm(Xsl) < 1e-3 || norm(Ysl) < 1e-3 || norm(Zsl) < 1e-3
+        warning("Frame %d: nearly collinear forearm axes", i);
+    end
   end
+
+% Smoothing attitude matrix F
+for i = 1:3
+    for j = 1:3
+        F(:,i,j) = smoothdata(F(:,i,j), 'movmean', 60);  
+    end
+end
+% Smoothing attitude matrix U 
+for i = 1:3
+    for j = 1:3
+        F(:,i,j) = smoothdata(F(:,i,j), 'movmean', 60); 
+    end
+end
+% Keep continuity of orientation 
 F = fixAttitudeContinuity(F);
 U = fixAttitudeContinuity(U);
 T = fixAttitudeContinuity(T);
