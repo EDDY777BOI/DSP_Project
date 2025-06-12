@@ -687,6 +687,7 @@ euler_LKnee_deg_unwrapped    = unwrapEulerAngles(euler_LKnee_deg);
     %fprintf('determinant = 1? : %d\n',floor(determinant));
 
 disp('Relative rotation matrices generated')
+disp('Euler angles calculated')
 
 %% EULER/CARDAN angles print
 
@@ -701,7 +702,7 @@ ShoulderAngles = table(gammaS, betaS, alphaS,'VariableNames', {'PlaneOfElevation
 
 % Toon eerste paar waarden
 disp('Eerste 10 rijen van de schouderhoeken (Euler/Cardan):');
-disp(ShoulderAngles(1:558,:));
+disp(ShoulderAngles(1:10,:));
 
 % ELBOW
 gammaE = euler_elbow_deg_unwrapped(:,1);
@@ -709,7 +710,7 @@ betaE  = euler_elbow_deg_unwrapped(:,2);
 alphaE = euler_elbow_deg_unwrapped(:,3);
 ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'AxialRotation_deg','Carrying_angle_deg','Flexion/Extension_deg'});
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
-disp(ElbowAngles(1:558,:));
+disp(ElbowAngles(1:10,:));
 
 % CORE
 gammaC = euler_core_deg_unwrapped(:,1);
@@ -717,7 +718,7 @@ betaC  = euler_core_deg_unwrapped(:,2);
 alphaC = euler_core_deg_unwrapped(:,3);
 CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'LateralFlexion_deg','Extension_deg','AxialRotation_deg'});
 disp('Eerste 10 rijen van de corehoeken (Euler/Cardan):');
-disp(CoreAngles(1:558,:));
+disp(CoreAngles(1:10,:));
 
 % PELVIS
 gammaP = euler_pelvis_deg_unwrapped(:,1);
@@ -725,7 +726,7 @@ betaP  = euler_pelvis_deg_unwrapped(:,2);
 alphaP = euler_pelvis_deg_unwrapped(:,3);
 PelvisAngles = table(gammaP, betaP, alphaP,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de pelvishoeken (Euler/Cardan):');
-disp(PelvisAngles(1:558,:));
+disp(PelvisAngles(1:10,:));
 
 % THORAX
 gammaT = euler_thorax_deg_unwrapped(:,1);
@@ -733,7 +734,7 @@ betaT  = euler_thorax_deg_unwrapped(:,2);
 alphaT = euler_thorax_deg_unwrapped(:,3);
 ThoraxAngles = table(gammaT, betaT, alphaT,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de thoraxhoeken (Euler/Cardan):');
-disp(ThoraxAngles(1:558,:));
+disp(ThoraxAngles(1:10,:));
 
 % LEFT KNEE
 gammaLK = euler_LKnee_deg_unwrapped(:,1);
@@ -741,7 +742,7 @@ betaLK  = euler_LKnee_deg_unwrapped(:,2);
 alphaLK = euler_LKnee_deg_unwrapped(:,3);
 LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de leftkne2ehoeken (Euler/Cardan):');
-disp(LeftKneeAngles(1:558,:));
+disp(LeftKneeAngles(1:10,:));
 %% Plot euler angles to check if they are correct
 plotEulerMotion('shoulder', euler_shoulder_deg_unwrapped);
 plotEulerMotion('elbow', euler_elbow_deg_unwrapped);
@@ -749,6 +750,14 @@ plotEulerMotion('core', euler_core_deg_unwrapped);
 plotEulerMotion('pelvis', euler_pelvis_deg_unwrapped);
 plotEulerMotion('thorax', euler_thorax_deg_unwrapped);
 plotEulerMotion('knee', euler_LKnee_deg_unwrapped);
+
+%% Plot euler angles but with Michail names
+plotEulerMotion('shoulder', Euler_shoulder);
+plotEulerMotion('elbow', Euler_elbow);
+plotEulerMotion('core', Euler_core);
+plotEulerMotion('pelvis', Euler_pelvis);
+plotEulerMotion('thorax', Euler_thorax);
+plotEulerMotion('knee', Euler_knee);
 
 %% Ball Release
 PLR = [filtered_data.PLRX, filtered_data.PLRY, filtered_data.PLRZ];
@@ -876,7 +885,7 @@ filtered_data = loadAndFilterTSV('10Ax1.tsv', 10, 300);
 fs = 300;           % samplefrequentie in Hz
 [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data);
 [R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL] = computeRelativeRotations(U, F, T, P, TL, SL);
-[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F);
+[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee, Euler_thorax] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F);
 % (optioneel: toon eerste paar regels in Command Window)
 disp('Eerste 5 rijen Schouderhoeken (deg):');
 disp(Euler_shoulder(1:5,:));
