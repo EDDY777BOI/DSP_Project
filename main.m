@@ -789,7 +789,7 @@ BR_time = t(BR_index);
 figure;
 subplot(3,1,1); plot(t, PLR); title('PLR Position'); legend('X','Y','Z');
 subplot(3,1,2); plot(t, vel); title('PLR Velocity'); legend('Vx','Vy','Vz');
-subplot(3,1,3); plot(t, speed); title('PLR Speed');
+subplot(3,1,3); plot(t, speed); title('PLR Sped');
 hold on; plot(BR_time, speed(BR_index), 'ro'); legend('Speed', 'Ball Release');
 
 figure;
