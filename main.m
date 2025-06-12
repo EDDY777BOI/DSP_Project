@@ -819,20 +819,29 @@ legend('Trajectory', 'Ball Release');
 
 %% MAXIMAL EXTERNAL ROTATION OF THE RIGHT SHOULDER (MER)
 
-axial_rotation_shoulder_post_fc = alphaS(fc_frame:end);
+% veronderstel:
+%   fc_frame   = frame index van foot contact (bijv. 427)
+%   alphaS     = Nx1 vector van de axiale schouderrotatie in graden
+%   t          = Nx1 tijdvector in seconden
+%   nFrames    = N (aantal frames)
 
-[max_er_value, local_idx_mer] = max(axial_rotation_shoulder_post_fc);
+% 1) definieer je zoek-interval
+search_range = fc_frame : 558;
 
-MER_index = fc_frame - 1 + local_idx_mer;
+% 2) vind de maximale Euler-hoek in dat window
+[MER_angle, rel_idx] = max(alphaS(search_range));
 
-MER_time = t(MER_index);
+% 3) zet om naar het globale frame-nummer en tijd
+MER_frame = search_range(rel_idx);
+MER_time  = t(MER_frame);
 
-fprintf('------------------------------------------------------------\n');
-fprintf('MAXIMAL EXTERNAL ROTATION OF THE RIGHT SHOULDER (MER):\n');
-fprintf('  Global Frame Index for MER: %d\n', MER_index);
-fprintf('  Time of MER: %.3f s (relative to start of trial)\n', MER_time);
-fprintf('  Maximum External Rotation Angle: %.2f degrees\n', max_er_value);
-fprintf('------------------------------------------------------------\n');
+% 4) toon resultaat
+fprintf('MER tussen FC en einde:\n');
+fprintf('  Frame: %d\n', MER_frame);
+fprintf('  Tijd:  %.3f s\n', MER_time);
+fprintf('  Hoek:  %.2f° external rotation\n', MER_angle);
+
+
 
 %%
 % ======================================

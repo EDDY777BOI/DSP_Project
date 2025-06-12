@@ -1,4 +1,4 @@
-function [Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee, Euler_thorax] = computeEulerAngles(amount_frames, U, T, P, TL, SL, F)
+function [Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_thorax, Euler_knee] = computeEulerAngles(amount_frames, U, T, P, TL, SL, F)
 % COMPUTEEULERANGLES Compute Euler angles (in degrees) from relative rotation matrices
 %
 %   Inputs:
