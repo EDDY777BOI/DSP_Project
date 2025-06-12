@@ -849,102 +849,149 @@ fprintf('------------------------------------------------------------\n');
 % Snelheden, Versnellingen & CRP
 % ======================================
 
-%% 1. Rotational speed function
+%% Rotational speed function
 % Inlezen van Hoekdata (van Persoon 2)
-% % - Voeg hier code toe om de hoekdata in te lezen
-% % - Denk aan struct of matrixvorm, per gewricht
-%fs = 300;         % sample­frequency
-fc = 10;          % cutoff in Hz
-[b,a] = butter(2, fc/(fs/2));
+%  300=sample­frequency
+% fc = 10 = cutoff in Hz
+% [b,a] = butter(2, fc/(fs/2));
 % filtration of the shoulder angles:
-Bodypart = 'S' % configure the bodypart (S = shoulder, E = elbow, P = pelvic, T = thorax, C = core, LK = left knee) 
+ %  (S = shoulder, E = elbow, P = pelvic, T = thorax, C = core, LK = left knee) 
+% Define body parts to analyze:
+bodyParts = {'S', 'T'};
 
-if Bodypart == 'S'
-    gamma = gammaS;
-    beta = betaS;
-    alpha = alphaS;
-elseif  Bodypart == 'T'
-    gamma = gammaT;
-    beta = betaT;
-    alpha = alphaT;
-elseif Bodypart == 'E'
-    gamma = gammaE;
-    beta = betaE;
-    alpha = alphaE;
-elseif  Bodypart == 'P'
-    gamma = gammaP;
-    beta = betaP;
-    alpha = alphaP;
-elseif Bodypart == 'LK'
-    gamma = gammaLK;
-    beta = betaLK;
-    alpha = alphaLK;
-elseif  Bodypart == 'C'
-    gamma = gammaC;
-    beta = betaC;
-    alpha = alphaC;
+% Storage for results
+results = struct();
+
+%% Loop through both selected body parts
+for idx = 1:2
+    part = bodyParts{idx};
+
+    % Select the correct angle set
+    switch part
+        case 'S'
+            gamma = gammaS; beta = betaS; alpha = alphaS;
+        case 'T'
+            gamma = gammaT; beta = betaT; alpha = alphaT;
+        case 'E'
+            gamma = gammaE; beta = betaE; alpha = alphaE;
+        case 'P'
+            gamma = gammaP; beta = betaP; alpha = alphaP;
+        case 'LK'
+            gamma = gammaLK; beta = betaLK; alpha = alphaLK;
+        case 'C'
+            gamma = gammaC; beta = betaC; alpha = alphaC;
+        otherwise
+            error('Unknown body part code: %s', part);
+    end
+
+    % 1. Filter angles
+    gamma_f = filtfilt(b, a, gamma);
+    beta_f  = filtfilt(b, a, beta);
+    alpha_f = filtfilt(b, a, alpha);
+
+    % 2. Angular velocities (°/s)
+    Dgamma = gradient(gamma_f, dt);
+    Dbeta  = gradient(beta_f,  dt);
+    Dalpha = gradient(alpha_f, dt);
+    % filtering the speedangles:
+    Dgamma_f = filtfilt(b, a, Dgamma);
+    Dbeta_f  = filtfilt(b, a, Dbeta);
+    Dalpha_f = filtfilt(b, a, Dalpha);
+
+    % 3. Angular accelerations (°/s²)
+    D2gamma = gradient(Dgamma_f, dt);
+    D2beta  = gradient(Dbeta_f,  dt);
+    D2alpha = gradient(Dalpha_f, dt);
+    % filtering the angularaccelerations (optional):
+    D2gamma_f = filtfilt(b, a, D2gamma);
+    D2beta_f  = filtfilt(b, a, D2beta);
+    D2alpha_f = filtfilt(b, a, D2alpha);
+
+    % 4. Save results
+    results.(part).gamma_f    = gamma_f;
+    results.(part).beta_f     = beta_f;
+    results.(part).alpha_f    = alpha_f;
+    results.(part).Dgamma_f   = Dgamma_f;
+    results.(part).Dbeta_f    = Dbeta_f;
+    results.(part).Dalpha_f   = Dalpha_f;
+    results.(part).D2gamma_f  = D2gamma_f;
+    results.(part).D2beta_f   = D2beta_f;
+    results.(part).D2alpha_f  = D2alpha_f;
 end
 
-gamma_f = filtfilt(b, a, gamma);
-beta_f  = filtfilt(b, a, beta);
-alpha_f = filtfilt(b, a, alpha);
-% we calculate the angular velocities by derivating the angles (here
-% shoulder with respect to the thorax)
-Dgamma = gradient(gamma_f, dt);
-Dbeta  = gradient(beta_f,  dt);
-Dalpha = gradient(alpha_f, dt);
+%% CRP Methode 1: Hoek-Snelheid Methode
+% User chooses the normalization method
+% Choose normalization method: 'minmax' or 'zscore'
+normMethod = 'zscore';
+% CRP Methode 1 ANGLE-VELOCITY PHASE PLANE METHOD:
+% Normaliseren van hoeken en snelheden:
+[angle_norm, vel_norm] = plotPhasePlane(results.(bodyParts{1}).gamma_f, results.(bodyParts{1}).Dgamma_f, normMethod);
+[angle2_norm, vel2_norm] = plotPhasePlane(results.(bodyParts{2}).gamma_f, results.(bodyParts{2}).Dgamma_f, normMethod);
 
-% Filtration before accel­eration calculation
-Dgamma_f = filtfilt(b,a, Dgamma);
-Dbeta_f  = filtfilt(b,a, Dbeta);
-Dalpha_f = filtfilt(b,a, Dalpha);
-    
-%% 2. RotationAcceleration function (°/s²) 
-% Here we calculate the rotational acceleration by calculating the second
-% derrivative of the angles
-D2gamma = gradient(Dgamma_f, dt);
-D2beta  = gradient(Dbeta_f,  dt);
-D2alpha = gradient(Dalpha_f, dt);
 
-% (optional) filtration after acceleration calculation
-D2gamma_f = filtfilt(b,a, D2gamma);
-D2beta_f  = filtfilt(b,a, D2beta);
-D2alpha_f = filtfilt(b,a, D2alpha);
+% figure;
+% subplot(2,1,1);
+% plot(t, angle_norm, 'b', 'LineWidth', 1.5);
+% title(sprintf('%s: Genormaliseerde Hoek (%s)', bodyParts{1}, normMethod));
+% ylabel('Hoek (genorm.)');
+% grid on;
+% 
+% subplot(2,1,2);
+% plot(t, vel_norm, 'r', 'LineWidth', 1.5);
+% title(sprintf('%s: Genormaliseerde Snelheid (%s)', bodyParts{1}, normMethod));
+% xlabel('Tijd (s)');
+% ylabel('Snelheid (genorm.)');
+% grid on;
+% 
+% 
+% figure;
+% subplot(2,1,1);
+% plot(t, angle2_norm, 'b', 'LineWidth', 1.5);
+% title(sprintf('%s: Genormaliseerde Hoek (%s)', bodyParts{2}, normMethod));
+% ylabel('Hoek (genorm.)');
+% grid on;
+% 
+% subplot(2,1,2);
+% plot(t, vel2_norm, 'r', 'LineWidth', 1.5);
+% title(sprintf('%s: Genormaliseerde Snelheid (%s)', bodyParts{2}, normMethod));
+% xlabel('Tijd (s)');
+% ylabel('Snelheid (genorm.)');
+% grid on;
 
-%% 4. CRP Methode 1: Hoek-Snelheid Methode
-% % Normaliseren van hoeken en snelheden:
-plotPhasePlane(gamma_f, Dgamma_f, 'minmax');
-% or
-plotPhasePlane(gamma_f, Dgamma_f, 'zscore');
+% fasehoeken en CRP berekening:
+phase1 = atan2(vel_norm, angle_norm);  % in radialen
+phase2 = atan2(vel2_norm, angle2_norm);  % in radialen
 
-%Interpretation
-%A perfect sinusoid gives you an ellipse centered at (0,0).
-%Non-sinusoidal or asymmetric movements distort that ellipse in intuitive ways (e.g. faster on the upswing than downswing).
+crp1 = wrapTo180(rad2deg(phase1 - phase2));
+ 
+%% CRP Methode 2: Hilbert Methode
+crp2 = computeCRP_Hilbert(results.(bodyParts{1}).gamma_f, results.(bodyParts{2}).gamma_f, t);
 
-% 
-% % - Bereken fasehoeken en CRP
-phase_angle_shoulder = atan2(vel_shoulder_norm, shoulder_norm);  % in radialen
-phase_angle_elbow = atan2(vel_elbow_norm, elbow_norm);  % in radialen
-% 
-crp1 = crp_angle_velocity(angle1, angle2, vel1, vel2);
-% 
-% %% 5. CRP Methode 2: Hilbert Methode
-% % - Gebruik Hilbert transform om fasen te verkrijgen
-% % - Bereken CRP op basis van deze fasen
-% 
-% % crp2_shoulder = ...;
-% 
-% %% 6. Vergelijking CRP-methodes
-% % - Plot of analyse van verschillen tussen beide methodes
-% 
-% % figuren of statistieken ...
-% 
-% %% 7. Export / Output
-% % - Struct klaarzetten voor Persoon 4
-% % - Opslaan van CRP-resultaten en afgeleiden
-% 
-% % save('output_persoon3f.mat', ...)
-% % save('output_persoon3.mat', ...)
+
+
+%% Vergelijking CRP-methodes
+figure;
+
+subplot(2,1,1);
+plot(t, crp1, 'b', 'LineWidth', 1.5); hold on;
+yline(0, '--k');
+ylim([-200 200]);
+title('CRP Methode 1: Hoek-Snelheid (Angle-Velocity)');
+ylabel('CRP (°)');
+grid on;
+
+subplot(2,1,2);
+plot(t, crp2, 'r', 'LineWidth', 1.5); hold on;
+yline(0, '--k');
+ylim([-200 200]);
+title('CRP Methode 2: Hilbert Transform');
+xlabel('Tijd (s)');
+ylabel('CRP (°)');
+grid on;
+
+sgtitle(sprintf('Vergelijking CRP-methodes (%s vs. %s)', bodyParts{1}, bodyParts{2}));
+legend('CRP1', 'CRP2');
+
 
 
 %% MICHAIL
