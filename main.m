@@ -739,6 +739,8 @@ alphaLK = euler_LKnee_deg_unwrapped(:,3);
 LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de leftkne2ehoeken (Euler/Cardan):');
 disp(LeftKneeAngles(1:10,:));
+
+
 %% Plot euler angles to check if they are correct
 figure;
 subplot(3,1,1); plot(t, gammaS); title('Plane of Elevation'); ylabel('deg');
@@ -918,6 +920,46 @@ for idx = 1:2
     results.(part).D2beta_f   = D2beta_f;
     results.(part).D2alpha_f  = D2alpha_f;
 end
+
+% Plot rotational velocities and accelerations for each body part
+for idx = 1:2
+    part = bodyParts{idx};
+    t_label = sprintf('Body Part: %s', part);  % Label for title
+
+    % Extract signals
+    Dgamma = results.(part).Dgamma_f;
+    Dbeta  = results.(part).Dbeta_f;
+    Dalpha = results.(part).Dalpha_f;
+
+    D2gamma = results.(part).D2gamma_f;
+    D2beta  = results.(part).D2beta_f;
+    D2alpha = results.(part).D2alpha_f;
+
+    % Plot rotational velocity
+    figure;
+    subplot(3,1,1);
+    plot(t, Dgamma, 'r', 'LineWidth', 1.2); ylabel('γ'' (°/s)'); grid on;
+    title([t_label ' – Rotational Velocity']);
+    
+    subplot(3,1,2);
+    plot(t, Dbeta, 'g', 'LineWidth', 1.2); ylabel('β'' (°/s)'); grid on;
+
+    subplot(3,1,3);
+    plot(t, Dalpha, 'b', 'LineWidth', 1.2); ylabel('α'' (°/s)'); xlabel('Time (s)'); grid on;
+
+    % Plot rotational acceleration
+    figure;
+    subplot(3,1,1);
+    plot(t, D2gamma, 'r', 'LineWidth', 1.2); ylabel('γ'''' (°/s²)'); grid on;
+    title([t_label ' – Rotational Acceleration']);
+
+    subplot(3,1,2);
+    plot(t, D2beta, 'g', 'LineWidth', 1.2); ylabel('β'''' (°/s²)'); grid on;
+
+    subplot(3,1,3);
+    plot(t, D2alpha, 'b', 'LineWidth', 1.2); ylabel('α'''' (°/s²)'); xlabel('Time (s)'); grid on;
+end
+
 
 %% CRP Methode 1: Hoek-Snelheid Methode
 % User chooses the normalization method
