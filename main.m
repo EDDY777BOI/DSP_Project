@@ -364,7 +364,7 @@ title('Lokale assenstelsels Forearm Right (F) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -396,7 +396,7 @@ title('Lokale assenstelsels Thorax (T) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -427,7 +427,7 @@ title('Lokale assenstelsels Pelvic (P) over tijd');
 view(3);
 
 % Om de 10 frames visualizeren we
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -459,7 +459,7 @@ title('Lokale assenstelsels Left Thigh (TL) over tijd');
 view(3);
 
 % Om de 10 frames visualiseren
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -492,7 +492,7 @@ title('Lokale assenstelsels Left Shank (SL) over tijd');
 view(3);
 
 % Om de 10 frames visualiseren
-step = 10;
+step = 5;
 scale = 100;  % lengte van de assen
 
 for i = 1:step:height(filtered_data)
@@ -525,7 +525,7 @@ title('Gecombineerde lokale assenstelsels');
 view(3);
 
 scale = 100;   % lengte van de assen
-step = 10;
+step = 5;
 
 for i = 1:step:amount_frames
     % Upper Arm (U)
@@ -561,7 +561,7 @@ title('Pelvis (P) & Left Thigh (TL) – Gecombineerde visualisatie');
 view(3);
 
 scale = 100;   % lengte van de assen
-step = 10;
+step = 5;
 
 for i = 1:step:amount_frames
     % Origin = HL (heup links)
@@ -644,23 +644,25 @@ for i = 1:amount_frames
     Xp = RP(:,1);
     Yp = RP(:,2);
     Zp = RP(:,3);
-    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_FU, Xp, Yp, Zp); 
+    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_TP, Xp, Yp, Zp); 
 
     % PELVIS
     % Euler-hoeken voor Pelvis motion within global frame based on
     % att_mat_P (ISB: ... volgorde)
     % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
-    % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
+    % globale coordinatensysteem kijken, we nemen XYZ volgorde
     euler_pelvis_rad = rotm2eul(RP, 'XYZ');
     euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
 
+    % THORAX
     % Euler-hoeken voor Thorax motion within global frame based on
     % att_mat_T (ISB: ... volgorde)
     % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
-    % globale coordinatensysteem kijken, we nemen standaard XYZ volgorde
+    % globale coordinatensysteem kijken, we nemen XYZ volgorde
     euler_thorax_rad = rotm2eul(RT, 'XYZ');
     euler_thorax_deg(i,:) = rad2deg(euler_thorax_rad);
 
+    % LEFT KNEE
     % Euler-hoeken voor Left Knee motion based on R_rel_STL (ISB: ... volgorde)
     Xtl = RTL(:,1);
     Ytl = RTL(:,2);
@@ -684,6 +686,7 @@ euler_LKnee_deg_unwrapped    = unwrapEulerAngles(euler_LKnee_deg);
     %fprintf('determinant = 1? : %d\n',floor(determinant));
 
 disp('Relative rotation matrices generated')
+disp('Euler angles calculated')
 
 %% EULER/CARDAN angles print
 
@@ -698,13 +701,13 @@ ShoulderAngles = table(gammaS, betaS, alphaS,'VariableNames', {'PlaneOfElevation
 
 % Toon eerste paar waarden
 disp('Eerste 10 rijen van de schouderhoeken (Euler/Cardan):');
-disp(ShoulderAngles(1:558,:));
+disp(ShoulderAngles(1:10,:));
 
 % ELBOW
 gammaE = euler_elbow_deg_unwrapped(:,1);
 betaE  = euler_elbow_deg_unwrapped(:,2);
 alphaE = euler_elbow_deg_unwrapped(:,3);
-ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'Flexion/Extension_deg','Carrying_angle_deg','AxialRotation_deg'});
+ElbowAngles = table(gammaE, betaE, alphaE,'VariableNames', {'AxialRotation_deg','Carrying_angle_deg','Flexion/Extension_deg'});
 disp('Eerste 10 rijen van de ellebooghoeken (Euler/Cardan):');
 disp(ElbowAngles(1:10,:));
 
@@ -712,7 +715,7 @@ disp(ElbowAngles(1:10,:));
 gammaC = euler_core_deg_unwrapped(:,1);
 betaC  = euler_core_deg_unwrapped(:,2);
 alphaC = euler_core_deg_unwrapped(:,3);
-CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'X','Y','Z'});
+CoreAngles = table(gammaC, betaC, alphaC,'VariableNames', {'LateralFlexion_deg','Extension_deg','AxialRotation_deg'});
 disp('Eerste 10 rijen van de corehoeken (Euler/Cardan):');
 disp(CoreAngles(1:10,:));
 
@@ -739,42 +742,30 @@ alphaLK = euler_LKnee_deg_unwrapped(:,3);
 LeftKneeAngles = table(gammaLK, betaLK, alphaLK,'VariableNames', {'X','Y','Z'});
 disp('Eerste 10 rijen van de leftkne2ehoeken (Euler/Cardan):');
 disp(LeftKneeAngles(1:10,:));
+
+%% Plot attitude matrix evolution for debug
+plotAttitudeMatrixEvolution(U, 'Upper Arm');
+plotAttitudeMatrixEvolution(F, 'Forearm');
+plotAttitudeMatrixEvolution(T, 'Thorax');
+plotAttitudeMatrixEvolution(P, 'Pelvis');
+plotAttitudeMatrixEvolution(SL, 'ShankLeft');
+plotAttitudeMatrixEvolution(TL, 'ThighLeft');
 %% Plot euler angles to check if they are correct
-figure;
-subplot(3,1,1); plot(t, gammaS); title('Plane of Elevation'); ylabel('deg');
-subplot(3,1,2); plot(t, betaS); title('Elevation'); ylabel('deg');
-subplot(3,1,3); plot(t, alphaS); title('Axial Rotation'); xlabel('tijd (s)'); ylabel('deg');
+plotEulerMotion('shoulder', euler_shoulder_deg_unwrapped);
+plotEulerMotion('elbow', euler_elbow_deg_unwrapped);
+plotEulerMotion('core', euler_core_deg_unwrapped);
+plotEulerMotion('pelvis', euler_pelvis_deg_unwrapped);
+plotEulerMotion('thorax', euler_thorax_deg_unwrapped);
+plotEulerMotion('knee', euler_LKnee_deg_unwrapped);
 
-%%
-% Example: plot R_rel_UT(2,2) versus Euler elevation angle (beta)
-R22 = zeros(amount_frames,1);    % Preallocate vector
+%% Plot euler angles but with Michail names
+plotEulerMotion('shoulder', Euler_shoulder);
+plotEulerMotion('elbow', Euler_elbow); 
+plotEulerMotion('core', Euler_core);
+plotEulerMotion('pelvis', Euler_pelvis);
+plotEulerMotion('thorax', Euler_thorax);
+plotEulerMotion('knee', Euler_knee);
 
-for i = 1:amount_frames
-    % Extract element (2,2) from R_rel_UT for each frame.
-    % If R_rel_UT is not explicitly stored over time, you can compute it again,
-    % or store it in your loop.
-    RU = squeeze(U(i,:,:));        
-    RT = squeeze(T(i,:,:));        
-    R_rel_UT = RT.' * RU;           % Upper arm relative to Thorax
-    R22(i) = R_rel_UT(2,2);
-end
-
-% Create a figure with two subplots side by side.
-figure;
-subplot(2,1,1);
-plot(t, R22, 'LineWidth', 1.5);
-xlabel('Time (s)');
-ylabel('R_{22}');
-title('Rotation Matrix Element R_{22} versus Time');
-grid on;
-
-subplot(2,1,2);
-% In this example, euler_shoulder_deg_unwrapped(:,2) represents the "elevation" angle.
-plot(t, euler_shoulder_deg_unwrapped(:,2), 'r', 'LineWidth', 1.5);
-xlabel('Time (s)');
-ylabel('Elevation (deg)');
-title('Shoulder Euler Elevation Angle versus Time');
-grid on;
 
 
 
@@ -838,7 +829,7 @@ legend('Trajectory', 'Ball Release');
 search_range = fc_frame : 558;
 
 % 2) vind de maximale Euler-hoek in dat window
-[MER_angle, rel_idx] = min(alphaS(search_range));
+[MER_angle, rel_idx] = max(alphaS(search_range));
 
 % 3) zet om naar het globale frame-nummer en tijd
 MER_frame = search_range(rel_idx);
@@ -926,10 +917,11 @@ fprintf('  Hoek:  %.2f° external rotation\n', MER_angle);
 
 %% MICHAIL
 filtered_data = loadAndFilterTSV('10Ax1.tsv', 10, 300);
+amount_frames = height(filtered_data);
 fs = 300;           % samplefrequentie in Hz
 [F, U, T, P, TL, SL] = computeLocalFrames(filtered_data);
 [R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL] = computeRelativeRotations(U, F, T, P, TL, SL);
-[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F);
+[Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee, Euler_thorax] = computeEulerAngles(amount_frames, U, T, P, TL, SL, F);
 % (optioneel: toon eerste paar regels in Command Window)
 disp('Eerste 5 rijen Schouderhoeken (deg):');
 disp(Euler_shoulder(1:5,:));

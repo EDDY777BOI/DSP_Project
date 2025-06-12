@@ -1,12 +1,8 @@
-function [Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee] = computeEulerAngles(R_rel_UT, R_rel_FU, R_rel_TP, R_rel_STL, U, T, P, TL, F)
+function [Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_thorax, Euler_knee] = computeEulerAngles(amount_frames, U, T, P, TL, SL, F)
 % COMPUTEEULERANGLES Compute Euler angles (in degrees) from relative rotation matrices
 %
 %   Inputs:
-%   R_rel_UT : Nx3x3 array (UpperArm relative to Thorax)
-%   R_rel_FU : Nx3x3 array (Forearm relative to UpperArm)
-%   R_rel_TP : Nx3x3 array (Thorax relative to Pelvis)
-%   R_rel_STL : Nx3x3 array (ShankLeft relative to ThighLeft)
-%   U, T, TL : Nx3x3 arrays of UpperArm, Thorax, ThighLeft respectively
+%   U, T, TL : Nx3x3 attitude matrices of UpperArm, Thorax, Pelvis, ThighLeft, Shankleft, Forearm respectively
 %
 %   Outputs (each Nx3):
 %   Euler_shoulder : [plane_of_elevation, elevation, axial_rotation] (ISB Y-X-Y)
@@ -15,47 +11,90 @@ function [Euler_shoulder, Euler_elbow, Euler_core, Euler_pelvis, Euler_knee] = c
 %   Euler_pelvis : [α, β, γ] of Pelvis in global frame (e.g. ZYX)
 %   Euler_knee : [α, β, γ] of ShankLeft relative to ThighLeft in XYZ
 %
- N = size(R_rel_UT,1);
-  Euler_shoulder = zeros(N,3);
-  Euler_elbow    = zeros(N,3);
-  Euler_core     = zeros(N,3);
-  Euler_pelvis   = zeros(N,3);
-  Euler_knee     = zeros(N,3);
 
-  for i = 1:N
-    % 1) Shoulder (ISB Y-X-Y)
-    Rt_UT = squeeze(R_rel_UT(i,:,:));  % Thorax' * UpperArm
-    RU   = squeeze(U(i,:,:));          % 3×3 UpperArm
-    RT   = squeeze(T(i,:,:));          % 3×3 Thorax
-    % Define the three axis vectors:
-    Yt = RT(:,2);  % Ythorax = second column of Thorax
-    Xh = RU(:,1);  % Xhumerus
-    Yh = RU(:,2);  % Yhumerus
-    angles_s = computeEulerFromAxes(Rt_UT, Yt, Xh, Yh);
-    Euler_shoulder(i,:) = unwrapEulerAngles(angles_s);
+% Arrays voor Euler-angles
+euler_shoulder_deg = zeros(amount_frames, 3);
+euler_elbow_deg    = zeros(amount_frames, 3);
+euler_core_deg     = zeros(amount_frames, 3);
+euler_pelvis_deg   = zeros(amount_frames, 3);
+euler_thorax_deg   = zeros(amount_frames, 3);
+euler_LKnee_deg    = zeros(amount_frames, 3);
 
-    % 2) ELBOWe (ISB Z-X-Y)
-    Rt_FU = squeeze(R_rel_FU(i,:,:));  % UpperArm' * Forearm
-    Zh = RU(:,3);                     % Zhumerus
-    RF = squeeze(F(i,:,:));           % 3×3 Forearm
-    Xf = RF(:,1);                     % Xforearm
-    Yf = RF(:,2);                     % Yforearm
-    angles_e = computeEulerFromAxes(Rt_FU, Zh, Xf, Yf);
-    Euler_elbow(i,:) = unwrapEulerAngles(angles_e);
+  for i = 1:amount_frames
+    % squeeze haalt de overbodige dimensie weg zodat je een 3x3 matrix krijgt
+    % U(i,:,:) heeft vorm [1,3,3] en wij hebben [3,3] nodig
+    RU = squeeze(U(i,:,:)); % 3x3 upper arm
+    RT = squeeze(T(i,:,:)); % 3x3 thorax
+    RF = squeeze(F(i,:,:)); % 3x3 forearm
+    RP = squeeze(P(i,:,:)); % 3x3 pelvic
+    RTL = squeeze(TL(i,:,:)); % 3x3 left thigh
+    RSL = squeeze(SL(i,:,:)); % 3x3 left shank
 
-    % 3) CORE (Thorax relatief aan Pelvis). We kiezen hier de ‘XYZ’-volgorde:
-    Rt_TP = squeeze(R_rel_TP(i,:,:));  % Pelvis' * Thorax
-    angles_c = rotm2eul(Rt_TP, 'XYZ');  % standaard extrinsiek XYZ
-    Euler_core(i,:) = rad2deg(angles_c);
+    % Relatieve matrix: R_rel = Rbase.' * Rsegment
+    % berekent 
+    R_rel_UT = RT.' * RU; % Relatieve matrix: Upper arm relative to Thorax
+    R_rel_FU = RU.' * RF; % Relatieve matrix: Forarm relative to Upper arm
+    R_rel_TP = RP.' * RT; % Relatieve matrix: Thorax relative to Pelvic
+    R_rel_STL = RTL.' * RSL; % Relatieve matrix: Shank Left relative to Thigh Left
 
-    % 4) PELVIS in de globale wereld (attitude P):
-    Rp = squeeze(P(i,:,:));             % 3×3 Pelvis
-    angles_p = rotm2eul(Rp, 'ZYX');      % gebruik ZYX (intrinsiek) of een andere conventie
-    Euler_pelvis(i,:) = rad2deg(angles_p);
+  
+    % SHOULDER
+    % Euler-hoeken voor Shoulder motion based on R_rel_UT (ISB: Y-X-Y volgorde)
+    % met Y = Ythorax, X = Xhumerus, Y = Yhumerus
+    %euler_rad = rotm2eul(R_rel_UT, 'YXY');  % [gamma beta alpha] in radialen
+    %euler_shoulder_rad(i,:) = euler_rad;
+    Yt = RT(:,2);  % 2e kolom van Thorax = Y-as thorax
+    Xh = RU(:,1);  % 1e kolom van Upper arm = X-as humerus
+    Yh = RU(:,2);  % 2e kolom van Upper arm = Y-as humerus
+    euler_shoulder_deg(i,:) = computeEulerFromAxes(R_rel_UT, Yt, Xh, Yh);
 
-    % 5) KNIE (ShankLeft relatief aan ThighLeft), standaard ‘XYZ’:
-    Rk = squeeze(R_rel_STL(i,:,:));     % ThighLeft' * ShankLeft
-    angles_k = rotm2eul(Rk, 'XYZ');
-    Euler_knee(i,:) = rad2deg(angles_k);
-  end
+    % ELBOW
+    % Euler-hoeken voor Elbow motion based on R_rel_FU (ISB: Z-X-Y volgorde)
+    % met Z = Zhumerus, X = Xforearm (loodrecht op Z en Y), Y = Yforearm
+    Zh = RU(:,3);
+    Xf = RF(:,1);
+    Yf = RF(:,2);
+    euler_elbow_deg(i,:) = computeEulerFromAxes(R_rel_FU, Zh, Xf, Yf);
+
+    % CORE
+    % Euler-hoeken voor Core motion based on R_rel_TP (ISB: geen volgorde gegeven)
+    Xp = RP(:,1);
+    Yp = RP(:,2);
+    Zp = RP(:,3);
+    euler_core_deg(i,:) = computeEulerFromAxes(R_rel_TP, Xp, Yp, Zp); 
+
+    % PELVIS
+    % Euler-hoeken voor Pelvis motion within global frame based on
+    % att_mat_P (ISB: ... volgorde)
+    % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
+    % globale coordinatensysteem kijken, we nemen XYZ volgorde
+    euler_pelvis_rad = rotm2eul(RP, 'XYZ');
+    euler_pelvis_deg(i,:) = rad2deg(euler_pelvis_rad);
+
+    % THORAX
+    % Euler-hoeken voor Thorax motion within global frame based on
+    % att_mat_T (ISB: ... volgorde)
+    % Hier kunnnen we de rotm2eul functie gebruiken, omdat we tov het
+    % globale coordinatensysteem kijken, we nemen XYZ volgorde
+    euler_thorax_rad = rotm2eul(RT, 'XYZ');
+    euler_thorax_deg(i,:) = rad2deg(euler_thorax_rad);
+
+    % LEFT KNEE
+    % Euler-hoeken voor Left Knee motion based on R_rel_STL (ISB: ... volgorde)
+    Xtl = RTL(:,1);
+    Ytl = RTL(:,2);
+    Ztl = RTL(:,3);
+    euler_LKnee_deg(i,:) = computeEulerFromAxes(R_rel_STL, Xtl, Ytl, Ztl);
+
+end
+% Unwrap Euler-angles om sprongen weg te halen
+Euler_shoulder = unwrapEulerAngles(euler_shoulder_deg);
+Euler_elbow    = unwrapEulerAngles(euler_elbow_deg);
+Euler_core     = unwrapEulerAngles(euler_core_deg);
+Euler_pelvis   = unwrapEulerAngles(euler_pelvis_deg);
+Euler_thorax   = unwrapEulerAngles(euler_thorax_deg);
+Euler_knee    = unwrapEulerAngles(euler_LKnee_deg);
+
+disp('Relative rotation matrices generated')
+disp('Euler angles calculated');
 end
